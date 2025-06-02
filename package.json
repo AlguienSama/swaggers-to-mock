@@ -5,8 +5,8 @@
   "types": "dist/cli.d.ts",
   "scripts": {
     "build": "npx tsc",
-    "start": "npx tsx index.ts",
-    "dev": "npx tsx src/cli.ts --watch -t --tsd=2"
+    "start": "npx tsx src/cli.ts",
+    "dev": "npx tsx src/cli.ts --watch"
   },
   "bin": {
     "swaggers-to-mock": "dist/cli.js"
