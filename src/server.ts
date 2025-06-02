@@ -1,4 +1,4 @@
-/* eslint-disable no-console */
+/* eslint-disable no-console-log */
 import express, { json, Request, Response, Router, urlencoded } from 'express';
 import Deps from './utils/deps';
 import { Config } from './config';
@@ -80,6 +80,7 @@ export class Server {
   }
 
   private setRouterOperation(_: Request, res: Response, method: OpenAPIV3.OperationObject, mock: Mock): void {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
@@ -99,8 +100,6 @@ export class Server {
     if (!responseMockContent) {
       throw new Error(`${COLORS.RED}Error:${COLORS.RESET} No content found for status code ${statusCode} in operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}.`);
     }
-
-    console.log('responseMockContent', responseMockContent);
 
     // Checking & setting content type
     let contentType = this.getContentTypeResponse(responseMockContent);
@@ -123,7 +122,6 @@ export class Server {
       responseBody = mock.getOutputSchema(responseMockContent, []);
     }
 
-    console.log('responseBody', responseBody);
     res.send(responseBody);
   }
 }
