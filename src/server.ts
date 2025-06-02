@@ -74,7 +74,7 @@ export class Server {
   }
 
   private getContentTypeResponse(operation: OpenAPIV3.ResponseObject['content']): string | undefined {
-    const contentTypes = Object.keys(operation!);
+    const contentTypes = Object.keys(operation ?? {});
 
     return contentTypes.includes(this.CONFIG.contentType) ? this.CONFIG.contentType : undefined;
   }
@@ -83,27 +83,36 @@ export class Server {
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
-      statusCode = Object.keys(method.responses)[0];
-      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid status code found for operation ${method.operationId || 'unknown'}. Returning ${statusCode} as first status founded.`);
+      statusCode = Object.keys(method.responses)[0] ?? this.CONFIG.status.default;
+      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid status code found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${statusCode}${COLORS.RESET} as first status founded.`);
     }
     res.status(parseInt(statusCode, 10));
 
-    const responseMock = (method.responses[statusCode] as OpenAPIV3.ResponseObject).content;
-    if (!responseMock) {
-      throw new Error(`${COLORS.RED}Error:${COLORS.RESET} No response content found for operation ${method.operationId || 'unknown'}.`);
+    const responseMock = method.responses[statusCode];
+    let responseMockContent = (responseMock as OpenAPIV3.ResponseObject).content;
+    if (!responseMockContent) {
+      const refPath = ((responseMock as OpenAPIV3.ReferenceObject).$ref ?? (responseMock as OpenAPIV3.ReferenceObject & { schema: OpenAPIV3.ReferenceObject }).schema.$ref).split('/');
+      refPath.shift();
+      responseMockContent = mock.getObjectFromRef(refPath);
     }
 
+    if (!responseMockContent) {
+      throw new Error(`${COLORS.RED}Error:${COLORS.RESET} No content found for status code ${statusCode} in operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}.`);
+    }
+
+    console.log('responseMockContent', responseMockContent);
+
     // Checking & setting content type
-    let contentType = this.getContentTypeResponse(responseMock);
+    let contentType = this.getContentTypeResponse(responseMockContent);
     if (!contentType) {
-      contentType = Object.keys(responseMock)[0];
-      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid Content-Type found for operation ${method.operationId || 'unknown'}. Returning ${contentType} as first Content-Type founded.`);
+      contentType = this.CONFIG.contentType ?? Object.keys(responseMockContent)[0];
+      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid Content-Type found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${contentType}${COLORS.RESET} as first Content-Type founded.`);
     }
     res.setHeader('Content-Type', contentType);
 
     // Checking & setting response body
     let responseBody: unknown = null;
-    const mockSchema = responseMock[contentType].schema;
+    const mockSchema = responseMockContent[contentType]?.schema;
     if (mockSchema && '$ref' in mockSchema) {
       const refPath = mockSchema.$ref.split('/');
       refPath.shift();
@@ -111,9 +120,10 @@ export class Server {
       const refSchema = mock.getObjectFromRef(refPath) as OpenAPIV3.ArraySchemaObject | OpenAPIV3.NonArraySchemaObject;
       responseBody = mock.getOutputSchema(refSchema, refHistory);
     } else {
-      responseBody = responseMock[contentType].example;
+      responseBody = mock.getOutputSchema(responseMockContent, []);
     }
 
+    console.log('responseBody', responseBody);
     res.send(responseBody);
   }
 }

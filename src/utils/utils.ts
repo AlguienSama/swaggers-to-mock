@@ -74,7 +74,7 @@ export class Utils {
     const indexToMatch = [...statusToMatch.split('').keys()].filter(index => statusToMatch[index] !== 'X');
 
     // Find the first matching status code
-    const matchingStatusCode = statusCodes.find(statusCode => {
+    return statusCodes.find(statusCode => {
       const trimmedStatusCode = statusCode.trim().toUpperCase();
 
       indexToMatch.forEach(index => {
@@ -84,7 +84,5 @@ export class Utils {
       });
       return true;
     });
-
-    return matchingStatusCode;
   }
 }
