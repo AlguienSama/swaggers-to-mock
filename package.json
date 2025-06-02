@@ -1,0 +1,41 @@
+{
+  "name": "swaggers-to-mock",
+  "version": "1.0.0",
+  "main": "dist/cli.ts",
+  "types": "dist/cli.d.ts",
+  "scripts": {
+    "build": "npx tsc",
+    "start": "npx tsx index.ts",
+    "dev": "npx tsx src/cli.ts --watch -t --tsd=2"
+  },
+  "bin": {
+    "swaggers-to-mock": "dist/cli.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "A tool to convert Swagger files to mock APIs",
+  "entrypoint": "dist/cli.js",
+  "dependencies": {
+    "express": "^5.1.0",
+    "js-yaml": "^4.1.0",
+    "rc": "^1.2.8",
+    "typescript": "^5.8.3",
+    "yaml-to-json": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.15.24",
+    "@types/rc": "^1.2.4"
+  },
+  "type": "commonjs",
+  "keywords": [
+    "swagger",
+    "mock",
+    "api",
+    "typescript",
+    "yaml",
+    "json",
+    "server"
+  ]
+}
