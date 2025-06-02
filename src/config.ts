@@ -4,7 +4,7 @@ import { ConfigFile } from './types/config.types';
 export class Config {
   static readonly url = '';
   static readonly port = 3000;
-  static readonly folder = '../yamls';
+  static readonly folder = './yamls';
   static readonly maxLoops = 2;
   static readonly arrayItems = 2;
   static readonly contentType = '*/*';
@@ -30,7 +30,7 @@ export class Config {
   }
 
   private loadConfig(): ConfigFile {
-    return rc('yamlserver', {
+    return rc('swagtomock', {
       url: Config.url,
       port: Config.port,
       folder: Config.folder,
