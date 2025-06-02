@@ -1,6 +1,6 @@
 {
   "name": "swaggers-to-mock",
-  "version": "1.0.2",
+  "version": "0.0.1",
   "main": "dist/cli.ts",
   "types": "dist/cli.d.ts",
   "scripts": {
