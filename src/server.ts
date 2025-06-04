@@ -1,4 +1,3 @@
-/* eslint-disable no-console-log */
 import express, { json, Request, Response, Router, urlencoded } from 'express';
 import Deps from './utils/deps';
 import { Config } from './config';
