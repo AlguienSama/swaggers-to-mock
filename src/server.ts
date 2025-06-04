@@ -17,6 +17,8 @@ export class Server {
     this.app = express();
     this.app.use(json());
     this.app.use(urlencoded({ extended: true }));
+
+    this.setMiddlewares();
   }
 
   initServer(): void {
@@ -24,6 +26,21 @@ export class Server {
       console.info(
         `${COLORS.BOLD}SERVER RUNNING ON ${COLORS.YELLOW}http://localhost:${this.CONFIG.port}${COLORS.RESET}`,
       );
+    });
+  }
+
+  private setMiddlewares(): void {
+    this.app.use((req, res, next) => {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', '*');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Expose-Headers', '*');
+      if (req.method === 'OPTIONS') {
+        res.sendStatus(204);
+      } else {
+        next();
+      }
     });
   }
 
@@ -80,7 +97,6 @@ export class Server {
   }
 
   private setRouterOperation(_: Request, res: Response, method: OpenAPIV3.OperationObject, mock: Mock): void {
-    res.setHeader('Access-Control-Allow-Origin', '*');
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
