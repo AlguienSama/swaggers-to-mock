@@ -14,14 +14,14 @@ export class Mock {
     }
 
     // Manejo de objetos
-    if (schema.type === 'object') {
+    if (schema.type === 'object' || !schema.type) {
       const formattedSchema: Record<string, unknown> = {};
       for (const key of Object.keys(schema.properties || {})) {
         const property = schema.properties![key];
         if ('$ref' in property) {
           const result = this.resolveRef(property.$ref, mockRefs);
           if (result !== undefined) formattedSchema[key] = result;
-        } else if (property.type === 'object') {
+        } else if (property.type === 'object' || !schema.type) {
           formattedSchema[key] = this.getOutputSchema(property, [...mockRefs]);
         } else if (property.type === 'array') {
           if (property.items && '$ref' in property.items) {
@@ -50,7 +50,7 @@ export class Mock {
           if ('$ref' in item) {
             const result = this.resolveRef(item.$ref, mockRefs);
             if (result !== undefined) value[key] = result;
-          } else if (item.type === 'object') {
+          } else if (item.type === 'object' || !schema.type) {
             value[key] = this.getOutputSchema(item, [...mockRefs]);
           } else if (item.type === 'array') {
             if (item.items && '$ref' in item.items) {
