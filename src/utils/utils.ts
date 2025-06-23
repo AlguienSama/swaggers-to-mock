@@ -1,5 +1,6 @@
 import { Config } from '../config';
 import { OpenAPIV3 } from '../types/openapi';
+import { SchemaObject } from '../types/openapi3';
 import { COLORS } from './colors';
 import Deps from './deps';
 
@@ -10,7 +11,7 @@ export class Utils {
    * @param property - OpenAPI Schema Object
    * @returns default value for the property
    */
-  static getPropertyValue = (property: OpenAPIV3.SchemaObject) => {
+  static getPropertyValue = (property: SchemaObject) => {
     let defaultValue: unknown = null;
     if (property.type === 'boolean') {
       defaultValue = false;

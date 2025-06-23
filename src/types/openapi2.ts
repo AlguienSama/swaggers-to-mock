@@ -1,6 +1,6 @@
 // Tipado básico para Swagger OpenAPI 2.0
 
-export interface Swagger2 {
+export interface OpenApi2 {
   swagger: "2.0";
   info: InfoObject;
   host?: string;

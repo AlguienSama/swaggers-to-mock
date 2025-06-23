@@ -9,6 +9,9 @@ export interface OpenAPI3 {
   security?: SecurityRequirementObject[];
   tags?: TagObject[];
   externalDocs?: ExternalDocumentationObject;
+  "x-ibm-configuration"?: IbmConfigurationObject;
+  "x-ibm-endpoints"?: any; // Puedes tipar esto si lo necesitas
+  // Otras extensiones IBM pueden agregarse aquí
 }
 
 export interface InfoObject {
@@ -206,7 +209,7 @@ export interface SecurityRequirementObject {
 
 export interface SchemaObject {
   $ref?: string;
-  type?: string;
+  type?: "string" | "number" | "integer" | "boolean" | "array" | "object";
   format?: string;
   title?: string;
   description?: string;
@@ -254,4 +257,15 @@ export interface XMLObject {
   prefix?: string;
   attribute?: boolean;
   wrapped?: boolean;
+}
+
+export interface IbmConfigurationObject {
+  assembly?: any;
+  cors?: any;
+  enforced?: boolean;
+  testable?: boolean;
+  phase?: string;
+  gateway?: string;
+  properties?: any;
+  [key: string]: any; // Para permitir otras extensiones IBM
 }

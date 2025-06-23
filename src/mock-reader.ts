@@ -6,11 +6,13 @@ import Deps from './utils/deps';
 import { Config } from './config';
 import { OpenAPIV3 } from './types/openapi';
 import { COLORS } from './utils/colors';
+import { OpenApi2 } from './types/openapi2';
+import { OpenAPI3 } from './types/openapi3';
 
 export class MockReader {
   private readonly CONFIG = Deps.get(Config).getConfig();
   private readonly fullPath: string;
-  mocksList: OpenAPIV3.Document[] = [];
+  mocksList: (OpenApi2 | OpenAPI3)[] = [];
 
   constructor() {
     this.fullPath = path.join(path.resolve(), this.CONFIG.folder);
@@ -25,13 +27,13 @@ export class MockReader {
       throw new Error(`Folder "${this.CONFIG.folder}" is empty!`);
     }
 
-    const mockData: OpenAPIV3.Document[] = folderFiles
+    const mockData: MockReader['mocksList'] = folderFiles
       .filter(file => file.toLowerCase().endsWith('.yaml'))
       .map(file => {
         const filePath = path.join(this.fullPath, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const yamlData = jsYaml.load(fileContent);
-        return yamlData as OpenAPIV3.Document;
+        return yamlData as MockReader['mocksList'][number];
       });
 
     if (mockData.length === 0) {

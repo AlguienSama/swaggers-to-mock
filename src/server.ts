@@ -3,9 +3,9 @@ import Deps from './utils/deps';
 import { Config } from './config';
 import { COLORS } from './utils/colors';
 import { MockReader } from './mock-reader';
-import { OpenAPIV3 } from './types/openapi';
 import { Utils } from './utils/utils';
-import { Mock } from './mock';
+import { MockV3 } from './mockV3';
+import { OpenAPI3 } from './types/openapi3';
 
 export class Server {
   private readonly CONFIG = Deps.get(Config).getConfig();
@@ -44,8 +44,15 @@ export class Server {
   }
 
   setMainRoutes(): void {
-    Deps.get(MockReader).mocksList.forEach((mock: OpenAPIV3.Document) => {
-      const mockUrl = mock.servers?.[0]?.url || mock['x-ibm-configuration']?.servers?.[0]?.url;
+    Deps.get(MockReader).mocksList.forEach((mock) => {
+      let mockUrl = '';
+      if ('swagger' in mock) {
+        // Swagger 2.0
+      } else if ('openapi' in mock) {
+        mockUrl = MockV3.getUrl(mock);
+      } else {
+        throw new Error(`${COLORS.RED}Error:${COLORS.RESET} Invalid OpenAPI document format in mock ${mock}. Expected OpenAPI 2.0 or 3.0.`);
+      }
       let url = '';
 
       if (!mockUrl?.includes(this.CONFIG.url)) {
@@ -56,11 +63,11 @@ export class Server {
         url = mockUrl.replace(this.CONFIG.url, '');
       }
 
-      this.app.use(url, this.getDocumentRoutes(new Mock(mock)));
+      this.app.use(url, this.getDocumentRoutes(new MockV3(mock)));
     });
   }
 
-  private getDocumentRoutes(mock: Mock): Router {
+  private getDocumentRoutes(mock: MockV3): Router {
     const router = Router();
     const paths = mock.mock.paths;
 
