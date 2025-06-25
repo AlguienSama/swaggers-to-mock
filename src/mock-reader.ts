@@ -1,18 +1,15 @@
-/* eslint-disable no-console */
 import fs from 'fs';
 import path from 'path';
 import jsYaml from 'js-yaml';
 import Deps from './utils/deps';
 import { Config } from './config';
-import { OpenAPIV3 } from './types/openapi';
-import { COLORS } from './utils/colors';
-import { OpenApi2 } from './types/openapi2';
-import { OpenAPI3 } from './types/openapi3';
+import { COLORS } from './utils/colors.utils';
+import { OpenAPI } from './types/openapi.types';
 
 export class MockReader {
   private readonly CONFIG = Deps.get(Config).getConfig();
   private readonly fullPath: string;
-  mocksList: (OpenApi2 | OpenAPI3)[] = [];
+  mocksList: OpenAPI.Document[] = [];
 
   constructor() {
     this.fullPath = path.join(path.resolve(), this.CONFIG.folder);
@@ -49,7 +46,7 @@ export class MockReader {
   }
 
   getBodySchema = (
-    schema: OpenAPIV3.NonArraySchemaObject | OpenAPIV3.ArraySchemaObject,
+    schema: OpenAPI.SchemaObject,
     mock: Record<string, unknown>,
     mockRefs: string[],
   ): Record<string, unknown> | unknown | unknown[] => {

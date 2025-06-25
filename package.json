@@ -1,20 +1,25 @@
 {
   "name": "swaggers-to-mock",
   "version": "0.0.3",
-  "main": "dist/cli.ts",
-  "types": "dist/cli.d.ts",
+  "description": "A tool to convert Swagger files to mock APIs",
+  "license": "ISC",
+  "repository": "https://github.com/AlguienSama/swaggers-to-mock",
+  "author": {
+    "name": "Marc Font i Puig",
+    "email": "marcfp2001@gmail.com",
+    "url": "https://www.npmjs.com/~aliquis"
+  },
+  "type": "commonjs",
+  "engines": {
+    "node": ">=16.0.0"
+  },
   "scripts": {
     "build": "npx tsc",
     "start": "npx tsx src/cli.ts",
-    "dev": "npx tsx src/cli.ts --watch"
+    "dev": "npx tsx src/cli.ts --watch",
+    "preversion": "npm run build"
   },
-  "bin": {
-    "swaggers-to-mock": "dist/cli.js"
-  },
-  "author": "",
-  "license": "ISC",
-  "description": "A tool to convert Swagger files to mock APIs",
-  "entrypoint": "dist/cli.js",
+  "bin": "dist/cli.js",
   "dependencies": {
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",
@@ -28,7 +33,10 @@
     "@types/node": "^22.15.24",
     "@types/rc": "^1.2.4"
   },
-  "type": "commonjs",
+  "files": [
+    "package.json",
+    "dist"
+  ],
   "keywords": [
     "swagger",
     "mock",
@@ -36,6 +44,8 @@
     "typescript",
     "yaml",
     "json",
-    "server"
+    "server",
+    "openapi",
+    "openapi3"
   ]
 }

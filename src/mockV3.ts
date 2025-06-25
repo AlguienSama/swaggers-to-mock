@@ -1,11 +1,13 @@
-import { OpenAPIV3 } from "./types/openapi";
-import { OpenAPI3, ReferenceObject, SchemaObject } from "./types/openapi3";
-import { Utils } from "./utils/utils";
+import { BaseMock, BaseMockStatic } from "./types/mock.types";
+import { OpenAPIV3 } from "./types/openapi3.types";
+import { setBaseMockStatic } from "./utils/mock.utils";
+import { Utils } from "./utils/utils.utils";
 
-export class MockV3 {
-  constructor(readonly mock: OpenAPI3) { }
+@setBaseMockStatic<BaseMockStatic<OpenAPIV3.Document>>()
+export class MockV3 implements BaseMock {
+  constructor(readonly mock: OpenAPIV3.Document) { }
 
-  static getUrl(mock: OpenAPI3): string {
+  static getUrl(mock: OpenAPIV3.Document): string {
     return mock.servers?.[0]?.url || mock['x-ibm-configuration']?.servers?.[0]?.url || '';
   }
 
@@ -13,7 +15,7 @@ export class MockV3 {
     return Utils.getObjectFromRef<T>(this.mock as unknown as Record<string, unknown>, ref);
   }
 
-  getOutputSchema(schema: SchemaObject | ReferenceObject, mockRefs: string[]): Record<string, unknown> | unknown[] {
+  getOutputSchema<T extends OpenAPIV3.SchemaObject>(schema: T, mockRefs: string[]): Record<string, unknown> | unknown[] {
     if (!schema) {
       return {};
     }
@@ -57,7 +59,7 @@ export class MockV3 {
         const result = this.resolveRef(schema.items.$ref!, mockRefs);
         if (result !== undefined) return result;
         return {};
-      } else if (schema.items.properties) {
+      } else if (schema.items?.properties) {
         const value: Record<string, unknown> = {};
         for (const key of Object.keys(schema.items.properties)) {
           const item = (schema.items as OpenAPIV3.SchemaObject).properties![key];

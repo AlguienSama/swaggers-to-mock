@@ -1,11 +1,13 @@
 import express, { json, Request, Response, Router, urlencoded } from 'express';
 import Deps from './utils/deps';
 import { Config } from './config';
-import { COLORS } from './utils/colors';
+import { COLORS } from './utils/colors.utils';
 import { MockReader } from './mock-reader';
-import { Utils } from './utils/utils';
+import { Utils } from './utils/utils.utils';
 import { MockV3 } from './mockV3';
-import { OpenAPI3 } from './types/openapi3';
+import { OpenAPIV3 } from './types/openapi3.types';
+import { OpenAPIV2 } from './types/openapi2.types';
+import { OpenAPI } from './types/openapi.types';
 
 export class Server {
   private readonly CONFIG = Deps.get(Config).getConfig();
@@ -63,33 +65,32 @@ export class Server {
         url = mockUrl.replace(this.CONFIG.url, '');
       }
 
-      this.app.use(url, this.getDocumentRoutes(new MockV3(mock)));
+      this.app.use(url, this.getSwaggerRoutes(mock));
     });
   }
 
-  private getDocumentRoutes(mock: MockV3): Router {
+  private getSwaggerRoutes(mock: OpenAPI.Document): Router {
     const router = Router();
-    const paths = mock.mock.paths;
+    const paths = mock.paths;
 
     if (!paths) {
-      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No paths found in OpenAPI document ${mock.mock.info.title}.`);
+      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No paths found in OpenAPI document ${mock.info.title}.`);
       return router;
     }
 
     Object.entries(paths).forEach(([path, methods]) => {
-      // Format the path to use Express-style parameters
-      // e.g. /users/{userId} -> /users/:userId
+      // Use Express-style parameters: /users/{userId} -> /users/:userId
       const formattedPath = path.replace(/{/g, ':').replace(/}/g, '');
 
       Object.keys(methods!).forEach(method => {
-        router[method as OpenAPIV3.HttpMethods](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods![method as OpenAPIV3.HttpMethods]!, mock));
+        router[method as keyof (OpenAPI.HttpMethods)](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods![method as keyof (OpenAPI.HttpMethods)]!, mock));
       })
     });
 
     return router;
   }
 
-  private getStatusCodeResponse(operation: OpenAPIV3.OperationObject): string | undefined {
+  private getStatusCodeResponse(operation: OpenAPI.OperationObject): string | undefined {
     const statusCodes = Object.keys(operation.responses);
     if (!statusCodes) return undefined;
 
@@ -102,7 +103,7 @@ export class Server {
     return contentTypes.includes(this.CONFIG.contentType) ? this.CONFIG.contentType : undefined;
   }
 
-  private setRouterOperation(_: Request, res: Response, method: OpenAPIV3.OperationObject, mock: Mock): void {
+  private setRouterOperation(_: Request, res: Response, method: OpenAPI.OperationObject, mock: OpenAPI.Document): void {
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
