@@ -11,8 +11,11 @@ Below are the default configuration options for the mock server:
 - **url**: `''`
   The server URL of the OpenAPI to be replaced. Default is empty.
 
+- **localUrl**: `'localhost'`
+  The url where the mock server will run.
+
 - **port**: `3000`
-  The port where the mock server will run on localhost.
+  The port where the mock server will run.
 
 - **folder**: `'./yamls'`
   Local folder where OpenAPI files are stored.

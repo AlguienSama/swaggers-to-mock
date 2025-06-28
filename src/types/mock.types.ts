@@ -2,7 +2,9 @@ import { OpenAPI } from "./openapi.types";
 
 export type BaseMock = {
   getObjectFromRef: <T>(ref: string[]) => T;
-  getOutputSchema: <T extends OpenAPI.SchemaObject>(schema: T, mockRefs: string[]) => Record<string, unknown> | unknown[];
+  getOutputSchema: (schema: object, mockRefs: string[]) => Record<string, unknown> | unknown[];
+  getContentTypeResponse: (responseSchema: any) => string | undefined;
+  getContentResponse: (object: object | object) => undefined;
 };
 
 export type BaseMockStatic<T extends OpenAPI.Document> = {

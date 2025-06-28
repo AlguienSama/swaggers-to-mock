@@ -1,5 +1,6 @@
 export type ConfigFile = {
   url: string;
+  localUrl: string;
   port: number;
   folder: string;
   maxLoops: number;
