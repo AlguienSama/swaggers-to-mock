@@ -16,7 +16,7 @@
   "scripts": {
     "build": "npx tsc",
     "start": "npx tsx src/cli.ts",
-    "dev": "npx tsx src/cli.ts --watch",
+    "dev": "npx tsx watch src/cli.ts",
     "preversion": "npm run build"
   },
   "bin": "dist/cli.js",
@@ -33,6 +33,7 @@
     "@types/node": "^22.15.24",
     "@types/rc": "^1.2.4"
   },
+  "exports": "./dist/index.js",
   "files": [
     "package.json",
     "dist"

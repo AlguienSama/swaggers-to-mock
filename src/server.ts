@@ -5,8 +5,6 @@ import { COLORS } from './utils/colors.utils';
 import { MockReader } from './mock-reader';
 import { Utils } from './utils/utils.utils';
 import { MockV3 } from './mockV3';
-import { OpenAPIV3 } from './types/openapi3.types';
-import { OpenAPIV2 } from './types/openapi2.types';
 import { OpenAPI } from './types/openapi.types';
 import { BaseMock } from './types/mock.types';
 import { MockV2 } from './mockV2';
@@ -27,7 +25,7 @@ export class Server {
   initServer(): void {
     this.app.listen(this.CONFIG.port, () => {
       console.info(
-        `${COLORS.BOLD}SERVER RUNNING ON ${COLORS.YELLOW}http://localhost:${this.CONFIG.port}${COLORS.RESET}`,
+        `${COLORS.BOLD}SERVER RUNNING ON ${COLORS.YELLOW}${this.CONFIG.localUrl}:${this.CONFIG.port}${COLORS.RESET}`,
       );
     });
   }
@@ -48,46 +46,44 @@ export class Server {
   }
 
   setMainRoutes(): void {
-    Deps.get(MockReader).mocksList.forEach((mock) => {
-      let mockUrl = '';
-      if ('swagger' in mock) {
-        mockUrl = MockV2.getUrl(mock);
-      } else if ('openapi' in mock) {
-        mockUrl = MockV3.getUrl(mock);
-      } else {
-        throw new Error(`${COLORS.RED}Error:${COLORS.RESET} Invalid OpenAPI document format in mock ${mock}. Expected OpenAPI 2.0 or 3.0.`);
-      }
+    Deps.get(MockReader).mocksList.forEach((mockDocument) => {
+      const mock: BaseMock = 'swagger' in mockDocument ? new MockV2(mockDocument) : new MockV3(mockDocument);
+
+      let mockUrl = mock.getBaseUrl();
       let url = this.CONFIG.localUrl;
 
       if (!mockUrl?.includes(this.CONFIG.url)) {
         console.warn(
-          `${COLORS.YELLOW}Warning:${COLORS.RESET} No server base URL matching with ${this.CONFIG.url} in mock ${mock.info.title}. Setting ${this.CONFIG.localUrl}/ to default URL`,
+          `${COLORS.YELLOW}Warning:${COLORS.RESET} No server base URL matching with ${this.CONFIG.url} in mock ${mock.mock.info.title}. Setting ${this.CONFIG.localUrl} to default URL`,
         );
+        console.info(`${COLORS.RED}Swagger base URL${COLORS.RESET}: ${mockUrl}`);
       } else {
         url = mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl);
-        console.info(`Swagger base URL: ${mockUrl}`);
       }
-      console.info(`Mock base URL: ${url}`)
+      console.info(`${COLORS.BLUE}Mock base URL:${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${url.split(this.CONFIG.localUrl)[1]}`)
 
-      this.app.use(url, this.getSwaggerRoutes(mock));
+      this.app.use(url.split(this.CONFIG.localUrl)[1], this.getSwaggerRoutes(mock));
     });
   }
 
-  private getSwaggerRoutes(mock: OpenAPI.Document): Router {
+  private getSwaggerRoutes(mock: BaseMock): Router {
     const router = Router();
-    const paths = mock.paths;
+    const paths = mock.mock.paths;
 
     if (!paths) {
-      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No paths found in OpenAPI document ${mock.info.title}.`);
+      console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No paths found in OpenAPI document ${mock.mock.info.title}.`);
       return router;
     }
 
     Object.entries(paths).forEach(([path, methods]) => {
       // Use Express-style parameters: /users/{userId} -> /users/:userId
       const formattedPath = path.replace(/{/g, ':').replace(/}/g, '');
+      router['get']('test', (_, res) => {
+        res.send(`path ${formattedPath}`)
+      });
 
       Object.keys(methods!).forEach(method => {
-        router[method as keyof (OpenAPI.HttpMethods)](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods![method as keyof (OpenAPI.HttpMethods)]!, mock));
+        router[method as keyof (OpenAPI.HttpMethods)](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods[method as keyof (OpenAPI.HttpMethods)], mock));
       })
     });
 
@@ -101,7 +97,7 @@ export class Server {
     return Utils.getFirstMatchingStatusCode(statusCodes, this.CONFIG.status.default);
   }
 
-  private setRouterOperation(_: Request, res: Response, method: OpenAPI.OperationObject, mockDocument: OpenAPI.Document): void {
+  private setRouterOperation(_: Request, res: Response, method: OpenAPI.OperationObject, mock: BaseMock): void {
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
@@ -110,13 +106,11 @@ export class Server {
     }
     res.status(parseInt(statusCode, 10));
 
-    const mock: BaseMock = 'swagger' in mockDocument ? new MockV2(mockDocument) : new MockV3(mockDocument);
-
     // Getting full response
     const responseMock = method.responses[statusCode];
     let responseMockContent = responseMock;
     if (!responseMockContent) {
-      const refPath = ((responseMock as OpenAPIV3.ReferenceObject).$ref ?? (responseMock as OpenAPIV3.ReferenceObject & { schema: OpenAPIV3.ReferenceObject }).schema.$ref).split('/');
+      const refPath = ((responseMock as OpenAPI.ReferenceObject).$ref ?? (responseMock as OpenAPI.ReferenceObject & { schema: OpenAPI.ReferenceObject }).schema.$ref).split('/');
       refPath.shift();
       responseMockContent = mock.getObjectFromRef(refPath);
     }
@@ -126,7 +120,7 @@ export class Server {
     }
 
     // Checking & setting content type
-    let contentType = mock.getContentTypeResponse(responseMockContent);
+    let contentType = mock.getContentTypeResponse(method);
     if (!contentType) {
       contentType = this.CONFIG.contentType ?? Object.keys(responseMockContent)[0];
       console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid Content-Type found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${contentType}${COLORS.RESET} as first Content-Type founded.`);
@@ -134,17 +128,7 @@ export class Server {
     res.setHeader('Content-Type', contentType);
 
     // Checking & setting response body
-    let responseBody: unknown = null;
-    const mockSchema = responseMockContent[contentType]?.schema;
-    if (mockSchema && '$ref' in mockSchema) {
-      const refPath = mockSchema.$ref!.split('/');
-      refPath.shift();
-      const refHistory = [refPath.join('/')];
-      const refSchema = mock.getObjectFromRef(refPath) as OpenAPIV3.ArraySchemaObject | OpenAPIV3.NonArraySchemaObject;
-      responseBody = mock.getOutputSchema(refSchema, refHistory);
-    } else {
-      responseBody = mock.getOutputSchema(responseMockContent, []);
-    }
+    let responseBody = mock.getContentResponse(responseMockContent);;
 
     res.send(responseBody);
   }

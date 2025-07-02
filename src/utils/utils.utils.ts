@@ -21,7 +21,8 @@ export class Utils {
     } else if (property.type === 'integer') {
       defaultValue = 0;
     }
-    return property.default ?? ('example' in property && property.example) ?? defaultValue;
+
+    return property.default || ('example' in property && property.example) || defaultValue;
   };
 
   /**

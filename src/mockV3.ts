@@ -1,19 +1,22 @@
 import { Config } from "./config";
-import { BaseMock, BaseMockStatic } from "./types/mock.types";
+import { BaseMock } from "./types/mock.types";
 import { OpenAPIV3 } from "./types/openapi3.types";
 import Deps from "./utils/deps";
-import { setBaseMockStatic } from "./utils/mock.utils";
 import { Utils } from "./utils/utils.utils";
 
-@setBaseMockStatic<BaseMockStatic<OpenAPIV3.Document>>()
 export class MockV3 implements BaseMock {
   constructor(readonly mock: OpenAPIV3.Document) { }
 
-  static getUrl(mock: OpenAPIV3.Document): string {
-    return mock.servers?.[0]?.url || mock['x-ibm-configuration']?.servers?.[0]?.url || '';
+  getBaseUrl(): string {
+    return this.mock.servers?.[0]?.url || this.mock['x-ibm-configuration']?.servers?.[0]?.url || '';
   }
 
-  getContentResponse(object: object) {
+  getContentResponse(object: OpenAPIV3.ResponseObject | OpenAPIV3.ReferenceObject) {
+    if ('$ref' in object) {
+      return this.getOutputSchema(object, []);
+    } else if (object.content) {
+      return this.getOutputSchema(object.content, []);
+    }
     return undefined;
   };
 
@@ -22,10 +25,6 @@ export class MockV3 implements BaseMock {
   }
 
   getOutputSchema(schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, mockRefs: string[]): Record<string, unknown> | unknown[] {
-    if (!schema) {
-      return {};
-    }
-
     // Manejo de objetos
     if ('$ref' in schema) {
       return this.resolveRef(schema.$ref!, mockRefs) ?? {};
@@ -93,9 +92,7 @@ export class MockV3 implements BaseMock {
         return [value];
       }
     }
-
-    // Caso base: tipo primitivo
-    else return Utils.getPropertyValue(schema);
+    else { return Utils.getPropertyValue(schema); }
 
     return {};
   }
