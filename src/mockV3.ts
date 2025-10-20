@@ -5,17 +5,22 @@ import Deps from "./utils/deps";
 import { Utils } from "./utils/utils.utils";
 
 export class MockV3 implements BaseMock {
+  private readonly CONFIG = Deps.get(Config).getConfig();
   constructor(readonly mock: OpenAPIV3.Document) { }
+
+  getVersion(): string {
+    return this.mock.openapi;
+  }
 
   getBaseUrl(): string {
     return this.mock.servers?.[0]?.url || this.mock['x-ibm-configuration']?.servers?.[0]?.url || '';
   }
 
-  getContentResponse(object: OpenAPIV3.ResponseObject | OpenAPIV3.ReferenceObject) {
+  getContentResponse(object: OpenAPIV3.RequestBodyObject | OpenAPIV3.ReferenceObject, contentType = this.CONFIG.contentType) {
     if ('$ref' in object) {
       return this.getOutputSchema(object, []);
     } else if (object.content) {
-      return this.getOutputSchema(object.content, []);
+      return this.getOutputSchema(object.content[contentType].schema ?? {}, []);
     }
     return undefined;
   };
@@ -25,13 +30,11 @@ export class MockV3 implements BaseMock {
   }
 
   getOutputSchema(schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, mockRefs: string[]): Record<string, unknown> | unknown[] {
-    // Manejo de objetos
     if ('$ref' in schema) {
       return this.resolveRef(schema.$ref!, mockRefs) ?? {};
     } else if (schema.type === 'object' || !schema.type) {
       const formattedSchema: Record<string, unknown> = {};
 
-      // Si el esquema tiene propiedades, iteramos sobre ellas
       if (!schema.properties) {
         return formattedSchema;
       }
@@ -58,7 +61,6 @@ export class MockV3 implements BaseMock {
       return formattedSchema;
     }
 
-    // Manejo de arrays
     else if (schema.type === 'array') {
       if (schema.items && '$ref' in schema.items) {
         const result = this.resolveRef(schema.items.$ref!, mockRefs);
@@ -97,9 +99,16 @@ export class MockV3 implements BaseMock {
     return {};
   }
 
-  getContentTypeResponse(responseSchema: OpenAPIV3.ResponseObject['content']): string | undefined {
-    const contentTypes = Object.keys(responseSchema ?? {});
-    const configContentType = Deps.get(Config).getConfig().contentType;
+  getContentTypeResponse(responseSchema: OpenAPIV3.OperationObject, status = this.CONFIG.status.default): string | undefined {
+    const responsesObject = responseSchema.responses[status] ?? responseSchema.responses[Object.keys(responseSchema.responses)[0]];
+    let responseObject: OpenAPIV3.ResponseObject | OpenAPIV3.ReferenceObject;
+    if ('$ref' in responsesObject) {
+      responseObject = this.getObjectFromRef<OpenAPIV3.ResponseObject>([(responsesObject as OpenAPIV3.ReferenceObject).$ref.split('/').slice(1).join('/')]);
+    } else {
+      responseObject = responsesObject as OpenAPIV3.ResponseObject;
+    }
+    const contentTypes = Object.keys(responseObject.content ?? {});
+    const configContentType = this.CONFIG.contentType;
 
     return contentTypes.includes(configContentType) ? configContentType : undefined;
   }

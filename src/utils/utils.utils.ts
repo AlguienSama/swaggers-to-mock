@@ -1,5 +1,5 @@
 import { Config } from '../config';
-import { OpenAPI } from '../types/openapi.types';
+import { HTTP_METHODS, OpenAPI } from '../types/openapi.types';
 import { COLORS } from './colors.utils';
 import Deps from './deps';
 
@@ -56,6 +56,10 @@ export class Utils {
     return true;
   };
 
+  static isHttpMethod = (method: string): method is OpenAPI.HttpMethods => {
+    return HTTP_METHODS.includes(method as OpenAPI.HttpMethods);
+  }
+
   static isValidStatusCode = (statusCode: string): boolean => {
     statusCode = statusCode.trim().toUpperCase();
 
@@ -86,4 +90,8 @@ export class Utils {
       return true;
     });
   }
+
+  static formatUrlPath = (path: string): string => {
+    return path.replace(/{/g, ':').replace(/}/g, '');
+  };
 }

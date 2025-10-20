@@ -8,4 +8,7 @@ export namespace OpenAPI {
   export type HttpMethods = OpenAPIV2.HttpMethods | OpenAPIV3.HttpMethods
   export type SchemaObject = OpenAPIV2.SchemaObject | OpenAPIV3.SchemaObject;
   export type ReferenceObject = OpenAPIV2.ReferenceObject | OpenAPIV3.ReferenceObject;
+  export type PathItemObject = OpenAPIV2.PathItemObject | OpenAPIV3.PathItemObject;
 }
+
+export const HTTP_METHODS: Array<OpenAPI.HttpMethods> = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'];

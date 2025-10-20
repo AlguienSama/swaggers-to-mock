@@ -7,6 +7,10 @@ import { Utils } from "./utils/utils.utils";
 export class MockV2 implements BaseMock {
   constructor(readonly mock: OpenAPIV2.Document) { }
 
+  getVersion(): string {
+    return this.mock.swagger;
+  }
+
   getBaseUrl(): string {
     let url = '';
     if (this.mock.host) url += this.mock.host;
@@ -33,13 +37,11 @@ export class MockV2 implements BaseMock {
   }
 
   getOutputSchema(schema: OpenAPIV2.SchemaObject | OpenAPIV2.ReferenceObject, mockRefs: string[]): Record<string, unknown> | unknown[] {
-    // Manejo de objetos
     if ('$ref' in schema) {
       return this.resolveRef(schema.$ref!, mockRefs) ?? {};
     } else if (schema.type === 'object' || !schema.type) {
       const formattedSchema: Record<string, unknown> = {};
 
-      // Si el esquema tiene propiedades, iteramos sobre ellas
       if (!schema.properties) {
         return formattedSchema;
       }

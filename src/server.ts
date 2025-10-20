@@ -60,7 +60,7 @@ export class Server {
       } else {
         url = mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl);
       }
-      console.info(`${COLORS.BLUE}Mock base URL:${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${url.split(this.CONFIG.localUrl)[1]}`)
+      console.info(`${COLORS.BLUE}Mock base URL${COLORS.RESET} ${COLORS.RED}v${mock.getVersion()}${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${url.split(this.CONFIG.localUrl)[1]}`)
 
       this.app.use(url.split(this.CONFIG.localUrl)[1], this.getSwaggerRoutes(mock));
     });
@@ -76,14 +76,13 @@ export class Server {
     }
 
     Object.entries(paths).forEach(([path, methods]) => {
-      // Use Express-style parameters: /users/{userId} -> /users/:userId
-      const formattedPath = path.replace(/{/g, ':').replace(/}/g, '');
-      router['get']('test', (_, res) => {
-        res.send(`path ${formattedPath}`)
-      });
+      // Express format: /users/{userId} -> /users/:userId
+      const formattedPath = Utils.formatUrlPath(path);
 
       Object.keys(methods!).forEach(method => {
-        router[method as keyof (OpenAPI.HttpMethods)](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods[method as keyof (OpenAPI.HttpMethods)], mock));
+        if (!Utils.isHttpMethod(method)) return;
+        console.info(`${method.toUpperCase()} -> ${formattedPath}`);
+        router[method as OpenAPI.HttpMethods](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods[method as keyof OpenAPI.HttpMethods], mock));
       })
     });
 
@@ -120,7 +119,7 @@ export class Server {
     }
 
     // Checking & setting content type
-    let contentType = mock.getContentTypeResponse(method);
+    let contentType = mock.getContentTypeResponse(method, statusCode);
     if (!contentType) {
       contentType = this.CONFIG.contentType ?? Object.keys(responseMockContent)[0];
       console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid Content-Type found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${contentType}${COLORS.RESET} as first Content-Type founded.`);

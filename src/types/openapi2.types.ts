@@ -3,7 +3,7 @@ export namespace OpenAPIV2 {
     return mock && mock.swagger === "2.0";
   }
 
-  export interface Document {
+  export type Document = {
     swagger: "2.0";
     info: InfoObject;
     host?: string;
@@ -21,7 +21,7 @@ export namespace OpenAPIV2 {
     externalDocs?: ExternalDocumentationObject;
   }
 
-  export interface InfoObject {
+  export type InfoObject = {
     title: string;
     description?: string;
     termsOfService?: string;
@@ -30,37 +30,29 @@ export namespace OpenAPIV2 {
     version: string;
   }
 
-  export interface ContactObject {
+  export type ContactObject = {
     name?: string;
     url?: string;
     email?: string;
   }
 
-  export interface LicenseObject {
+  export type LicenseObject = {
     name: string;
     url?: string;
   }
 
-  export interface HttpMethods {
-    get?: OperationObject;
-    put?: OperationObject;
-    post?: OperationObject;
-    delete?: OperationObject;
-    options?: OperationObject;
-    head?: OperationObject;
-    patch?: OperationObject;
-  }
+  export type HttpMethods = 'get' | 'put' | 'post' | 'delete' | 'options' | 'head' | 'patch' | 'trace';
 
-  export interface PathsObject {
+  export type PathsObject = {
     [path: string]: PathItemObject;
   }
 
-  export interface PathItemObject extends HttpMethods {
+  export type PathItemObject = {
     $ref?: string;
     parameters?: (ParameterObject | ReferenceObject)[];
-  }
+  } & { [key in HttpMethods]?: OperationObject; }
 
-  export interface OperationObject {
+  export type OperationObject = {
     tags?: string[];
     summary?: string;
     description?: string;
@@ -75,7 +67,7 @@ export namespace OpenAPIV2 {
     security?: SecurityRequirementObject[];
   }
 
-  export interface ParameterObject {
+  export type ParameterObject = {
     name: string;
     in: "query" | "header" | "path" | "formData" | "body";
     description?: string;
@@ -84,18 +76,18 @@ export namespace OpenAPIV2 {
     schema?: SchemaObject;
   }
 
-  export interface ReferenceObject {
+  export type ReferenceObject = {
     $ref: string;
   }
 
-  export interface ResponseObject {
+  export type ResponseObject = {
     description: string;
     schema?: SchemaObject | ReferenceObject;
     headers?: { [name: string]: HeaderObject };
     examples?: { [mimeType: string]: any };
   }
 
-  export interface HeaderObject {
+  export type HeaderObject = {
     description?: string;
     type: string;
     format?: string;
@@ -116,7 +108,7 @@ export namespace OpenAPIV2 {
     multipleOf?: number;
   }
 
-  export interface ItemsObject {
+  export type ItemsObject = {
     type: string;
     format?: string;
     items?: ItemsObject;
@@ -136,7 +128,7 @@ export namespace OpenAPIV2 {
     multipleOf?: number;
   }
 
-  export interface SchemaObject {
+  export type SchemaObject = {
     $ref?: string;
     type?: string;
     format?: string;
@@ -150,11 +142,11 @@ export namespace OpenAPIV2 {
     enum?: any[];
   }
 
-  export interface DefinitionsObject {
+  export type DefinitionsObject = {
     [name: string]: SchemaObject;
   }
 
-  export interface SecuritySchemeObject {
+  export type SecuritySchemeObject = {
     type: string;
     description?: string;
     name?: string;
@@ -165,17 +157,17 @@ export namespace OpenAPIV2 {
     scopes?: { [scopeName: string]: string };
   }
 
-  export interface SecurityRequirementObject {
+  export type SecurityRequirementObject = {
     [name: string]: string[];
   }
 
-  export interface TagObject {
+  export type TagObject = {
     name: string;
     description?: string;
     externalDocs?: ExternalDocumentationObject;
   }
 
-  export interface ExternalDocumentationObject {
+  export type ExternalDocumentationObject = {
     description?: string;
     url: string;
   }

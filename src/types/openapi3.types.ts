@@ -3,7 +3,7 @@ export namespace OpenAPIV3 {
     return mock && mock.openapi?.startsWith("3.");
   }
 
-  export interface Document {
+  export type Document = {
     openapi: string;
     info: InfoObject;
     servers?: ServerObject[];
@@ -16,7 +16,7 @@ export namespace OpenAPIV3 {
     "x-ibm-endpoints"?: any;
   }
 
-  export interface InfoObject {
+  export type InfoObject = {
     title: string;
     description?: string;
     termsOfService?: string;
@@ -25,45 +25,36 @@ export namespace OpenAPIV3 {
     version: string;
   }
 
-  export interface ContactObject {
+  export type ContactObject = {
     name?: string;
     url?: string;
     email?: string;
   }
 
-  export interface LicenseObject {
+  export type LicenseObject = {
     name: string;
     url?: string;
   }
 
-  export interface ServerObject {
+  export type ServerObject = {
     url: string;
     description?: string;
     variables?: { [variable: string]: ServerVariableObject };
   }
 
-  export interface ServerVariableObject {
+  export type ServerVariableObject = {
     enum?: string[];
     default: string;
     description?: string;
   }
 
-  export interface HttpMethods {
-    get?: OperationObject;
-    put?: OperationObject;
-    post?: OperationObject;
-    delete?: OperationObject;
-    options?: OperationObject;
-    head?: OperationObject;
-    patch?: OperationObject;
-    trace?: OperationObject;
-  }
+  export type HttpMethods = 'get' | 'put' | 'post' | 'delete' | 'options' | 'head' | 'patch' | 'trace';
 
-  export interface PathsObject {
+  export type PathsObject = {
     [path: string]: PathItemObject;
   }
 
-  export interface PathItemObject extends HttpMethods {
+  export type PathItemObject =  & { [key in HttpMethods]?: OperationObject; } & {
     $ref?: string;
     summary?: string;
     description?: string;
@@ -71,7 +62,7 @@ export namespace OpenAPIV3 {
     parameters?: (ParameterObject | ReferenceObject)[];
   }
 
-  export interface OperationObject {
+  export type OperationObject = {
     tags?: string[];
     summary?: string;
     description?: string;
@@ -86,7 +77,7 @@ export namespace OpenAPIV3 {
     servers?: ServerObject[];
   }
 
-  export interface ParameterObject {
+  export type ParameterObject = {
     name: string;
     in: "query" | "header" | "path" | "cookie";
     description?: string;
@@ -102,24 +93,24 @@ export namespace OpenAPIV3 {
     content?: { [media: string]: MediaTypeObject };
   }
 
-  export interface ReferenceObject {
+  export type ReferenceObject = {
     $ref: string;
   }
 
-  export interface RequestBodyObject {
+  export type RequestBodyObject = {
     description?: string;
     content: { [media: string]: MediaTypeObject };
     required?: boolean;
   }
 
-  export interface MediaTypeObject {
+  export type MediaTypeObject = {
     schema?: SchemaObject | ReferenceObject;
     example?: any;
     examples?: { [media: string]: ExampleObject | ReferenceObject };
     encoding?: { [property: string]: EncodingObject };
   }
 
-  export interface EncodingObject {
+  export type EncodingObject = {
     contentType?: string;
     headers?: { [header: string]: HeaderObject | ReferenceObject };
     style?: string;
@@ -127,29 +118,29 @@ export namespace OpenAPIV3 {
     allowReserved?: boolean;
   }
 
-  export interface ResponsesObject {
+  export type ResponsesObject = {
     [statusCode: string]: ResponseObject | ReferenceObject;
   }
 
-  export interface ResponseObject {
+  export type ResponseObject = {
     description: string;
     headers?: { [header: string]: HeaderObject | ReferenceObject };
     content?: { [media: string]: MediaTypeObject };
     links?: { [link: string]: LinkObject | ReferenceObject };
   }
 
-  export interface CallbackObject {
+  export type CallbackObject = {
     [expression: string]: PathItemObject;
   }
 
-  export interface ExampleObject {
+  export type ExampleObject = {
     summary?: string;
     description?: string;
     value?: any;
     externalValue?: string;
   }
 
-  export interface LinkObject {
+  export type LinkObject = {
     operationRef?: string;
     operationId?: string;
     parameters?: { [parameter: string]: any };
@@ -158,20 +149,20 @@ export namespace OpenAPIV3 {
     server?: ServerObject;
   }
 
-  export interface HeaderObject extends ParameterObject { }
+  export type HeaderObject = ParameterObject & { }
 
-  export interface TagObject {
+  export type TagObject = {
     name: string;
     description?: string;
     externalDocs?: ExternalDocumentationObject;
   }
 
-  export interface ExternalDocumentationObject {
+  export type ExternalDocumentationObject = {
     description?: string;
     url: string;
   }
 
-  export interface ComponentsObject {
+  export type ComponentsObject = {
     schemas?: { [key: string]: SchemaObject | ReferenceObject };
     responses?: { [key: string]: ResponseObject | ReferenceObject };
     parameters?: { [key: string]: ParameterObject | ReferenceObject };
@@ -183,7 +174,7 @@ export namespace OpenAPIV3 {
     callbacks?: { [key: string]: CallbackObject | ReferenceObject };
   }
 
-  export interface SecuritySchemeObject {
+  export type SecuritySchemeObject = {
     type: "apiKey" | "http" | "oauth2" | "openIdConnect";
     description?: string;
     name?: string;
@@ -194,25 +185,25 @@ export namespace OpenAPIV3 {
     openIdConnectUrl?: string;
   }
 
-  export interface OAuthFlowsObject {
+  export type OAuthFlowsObject = {
     implicit?: OAuthFlowObject;
     password?: OAuthFlowObject;
     clientCredentials?: OAuthFlowObject;
     authorizationCode?: OAuthFlowObject;
   }
 
-  export interface OAuthFlowObject {
+  export type OAuthFlowObject = {
     authorizationUrl: string;
     tokenUrl: string;
     refreshUrl?: string;
     scopes: { [scope: string]: string };
   }
 
-  export interface SecurityRequirementObject {
+  export type SecurityRequirementObject = {
     [name: string]: string[];
   }
 
-  export interface SchemaObject {
+  export type SchemaObject = {
     $ref?: string;
     type?: "string" | "number" | "integer" | "boolean" | "array" | "object";
     format?: string;
@@ -251,12 +242,12 @@ export namespace OpenAPIV3 {
     deprecated?: boolean;
   }
 
-  export interface DiscriminatorObject {
+  export type DiscriminatorObject = {
     propertyName: string;
     mapping?: { [key: string]: string };
   }
 
-  export interface XMLObject {
+  export type XMLObject = {
     name?: string;
     namespace?: string;
     prefix?: string;
@@ -264,7 +255,7 @@ export namespace OpenAPIV3 {
     wrapped?: boolean;
   }
 
-  export interface IbmConfigurationObject {
+  export type IbmConfigurationObject = {
     assembly?: any;
     cors?: any;
     enforced?: boolean;
