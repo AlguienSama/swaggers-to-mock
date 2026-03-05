@@ -5,6 +5,7 @@ export type ConfigFile = {
   folder: string;
   maxLoops: number;
   arrayItems: number;
+  delay: number;
   status: {
     default: string;
     error: string;

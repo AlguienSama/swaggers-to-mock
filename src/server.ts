@@ -129,6 +129,8 @@ export class Server {
     // Checking & setting response body
     let responseBody = mock.getContentResponse(responseMockContent);;
 
-    res.send(responseBody);
+    setTimeout(() => {
+      res.send(responseBody);
+    }, this.CONFIG.delay);
   }
 }

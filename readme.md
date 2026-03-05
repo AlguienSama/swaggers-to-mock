@@ -26,6 +26,9 @@ Below are the default configuration options for the mock server:
 - **arrayItems**: `2`
   Default number of items generated in mocked arrays.
 
+- **delay**: `0`
+  Delay in milliseconds before sending the response (useful to simulate slow requests).
+
 - **contentType**: `'*/*'`
   Default accepted content type.
 

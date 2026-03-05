@@ -8,6 +8,7 @@ export class Config {
   static readonly folder = './yamls';
   static readonly maxLoops = 2;
   static readonly arrayItems = 2;
+  static readonly delay = 0;
   static readonly contentType = '*/*';
   static readonly status = {
     default: '2XX',
@@ -38,6 +39,7 @@ export class Config {
       folder: Config.folder,
       maxLoops: Config.maxLoops,
       arrayItems: Config.arrayItems,
+      delay: Config.delay,
       contentType: Config.contentType,
       status: {
         default: Config.status.default,
