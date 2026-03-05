@@ -52,13 +52,13 @@ export class Server {
       let mockUrl = mock.getBaseUrl();
       let url = this.CONFIG.localUrl;
 
-      if (!mockUrl?.includes(this.CONFIG.url)) {
+      if (mockUrl?.includes(this.CONFIG.url)) {
+        url = mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl);
+      } else {
         console.warn(
           `${COLORS.YELLOW}Warning:${COLORS.RESET} No server base URL matching with ${this.CONFIG.url} in mock ${mock.mock.info.title}. Setting ${this.CONFIG.localUrl} to default URL`,
         );
         console.info(`${COLORS.RED}Swagger base URL${COLORS.RESET}: ${mockUrl}`);
-      } else {
-        url = mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl);
       }
       console.info(`${COLORS.BLUE}Mock base URL${COLORS.RESET} ${COLORS.RED}v${mock.getVersion()}${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${url.split(this.CONFIG.localUrl)[1]}`)
 
@@ -79,10 +79,10 @@ export class Server {
       // Express format: /users/{userId} -> /users/:userId
       const formattedPath = Utils.formatUrlPath(path);
 
-      Object.keys(methods!).forEach(method => {
+      Object.keys(methods).forEach(method => {
         if (!Utils.isHttpMethod(method)) return;
         console.info(`${method.toUpperCase()} -> ${formattedPath}`);
-        router[method as OpenAPI.HttpMethods](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods[method as keyof OpenAPI.HttpMethods], mock));
+        router[method](formattedPath, (req: Request, res: Response) => this.setRouterOperation(req, res, methods[method as keyof OpenAPI.HttpMethods], mock));
       })
     });
 
@@ -103,7 +103,7 @@ export class Server {
       statusCode = Object.keys(method.responses)[0] ?? this.CONFIG.status.default;
       console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid status code found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${statusCode}${COLORS.RESET} as first status founded.`);
     }
-    res.status(parseInt(statusCode, 10));
+    res.status(Number.parseInt(statusCode, 10));
 
     // Getting full response
     const responseMock = method.responses[statusCode];
