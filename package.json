@@ -1,6 +1,6 @@
 {
   "name": "swaggers-to-mock",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A tool to convert Swagger files to mock APIs",
   "license": "ISC",
   "repository": "https://github.com/AlguienSama/swaggers-to-mock",
