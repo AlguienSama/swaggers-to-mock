@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import jsYaml from 'js-yaml';
 import Deps from './utils/deps';
 import { Config } from './config';

@@ -20,7 +20,26 @@ export class MockV3 implements BaseMock {
     if ('$ref' in object) {
       return this.getOutputSchema(object, []);
     } else if (object.content) {
-      return this.getOutputSchema(object.content[contentType].schema ?? {}, []);
+      const content = object.content[contentType];
+
+      // First, check if there are examples defined at the response level
+      if (content.examples) {
+        const exampleKeys = Object.keys(content.examples);
+        if (exampleKeys.length > 0) {
+          const firstExample = content.examples[exampleKeys[0]];
+          if ('value' in firstExample) {
+            return firstExample.value;
+          }
+        }
+      }
+
+      // If no examples, check for a single example
+      if (content.example) {
+        return content.example;
+      }
+
+      // Otherwise, generate from schema
+      return this.getOutputSchema(content.schema ?? {}, []);
     }
     return undefined;
   };
@@ -30,82 +49,132 @@ export class MockV3 implements BaseMock {
   }
 
   getOutputSchema(schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, mockRefs: string[]): Record<string, unknown> | unknown[] {
+    // Handle references
     if ('$ref' in schema) {
       return this.resolveRef(schema.$ref!, mockRefs) ?? {};
-    } else if (schema.type === 'object' || !schema.type) {
-      const formattedSchema: Record<string, unknown> = {};
-
-      if (!schema.properties) {
-        return formattedSchema;
-      }
-      for (const key of Object.keys(schema.properties)) {
-        const property = schema.properties[key];
-        if ('$ref' in property) {
-          const result = this.resolveRef(property.$ref!, mockRefs);
-          if (result !== undefined) formattedSchema[key] = result;
-        } else if (property.type === 'object' || !schema.type) {
-          formattedSchema[key] = this.getOutputSchema(property, [...mockRefs]);
-        } else if (property.type === 'array') {
-          if (property.items && '$ref' in property.items) {
-            const result = this.resolveRef(property.items.$ref!, mockRefs);
-            if (result !== undefined) formattedSchema[key] = [result];
-          } else if (Array.isArray(property.items)) {
-            formattedSchema[key] = property.items.map(item => this.getOutputSchema(item, [...mockRefs]));
-          } else if ((property.items && property.items.type === 'object') || !property.items?.type) {
-            formattedSchema[key] = [this.getOutputSchema(property.items!, [...mockRefs])];
-          }
-        } else {
-          formattedSchema[key] = Utils.getPropertyValue(property);
-        }
-      }
-      return formattedSchema;
     }
 
-    else if (schema.type === 'array') {
-      if (schema.items && '$ref' in schema.items) {
-        const result = this.resolveRef(schema.items.$ref!, mockRefs);
-        if (result !== undefined) return result;
-        return {};
-      } else if (Array.isArray(schema.items)) {
-        return [...schema.items.map(item => this.getOutputSchema(item, [...mockRefs]))];
-      } else if (schema.items?.properties) {
-        const value: Record<string, unknown> = {};
-        for (const key of Object.keys(schema.items.properties)) {
-          const item = (schema.items as OpenAPIV3.SchemaObject).properties![key];
-          if ('$ref' in item) {
-            const result = this.resolveRef(item.$ref!, mockRefs);
-            if (result !== undefined) value[key] = result;
-          } else if (item.type === 'object' || !schema.type) {
-            value[key] = this.getOutputSchema(item, [...mockRefs]);
-          } else if (item.type === 'array') {
-            if (!item.items) return [];
-            if ('$ref' in item.items) {
-              const result = this.resolveRef(item.items.$ref!, mockRefs);
-              if (result !== undefined) value[key] = [result];
-            } else if (Array.isArray(item.items)) {
-              value[key] = [...item.items.map(itemItem => this.getOutputSchema(itemItem, [...mockRefs]))];
-            } else if (item.items.type === 'object' || !item.items.type) {
-              value[key] = [this.getOutputSchema(item.items, [...mockRefs])];
-            }
-          } else {
-            value[key] = Utils.getPropertyValue(item);
-          }
-        }
-        return [value];
+    // Handle schema composition keywords
+    if (schema.allOf) return this.mergeAllOfSchemas(schema.allOf, mockRefs);
+    if (schema.oneOf) return this.getOutputSchema(schema.oneOf[0], mockRefs);
+    if (schema.anyOf) return this.getOutputSchema(schema.anyOf[0], mockRefs);
+
+    // Handle different schema types
+    if (schema.type === 'object' || !schema.type) {
+      return this.processObjectSchema(schema, mockRefs);
+    }
+
+    if (schema.type === 'array') {
+      return this.processArraySchema(schema, mockRefs);
+    }
+
+    // Handle primitive types
+    return Utils.getPropertyValue(schema);
+  }
+  private processObjectSchema(schema: OpenAPIV3.SchemaObject, mockRefs: string[]): Record<string, unknown> {
+    const formattedSchema: Record<string, unknown> = {};
+
+    if (!schema.properties) {
+      // Return example if available, otherwise empty object
+      return ('example' in schema && schema.example)
+        ? schema.example as Record<string, unknown>
+        : formattedSchema;
+    }
+
+    for (const key of Object.keys(schema.properties)) {
+      const property = schema.properties[key];
+      formattedSchema[key] = this.processProperty(property, schema.type, mockRefs);
+    }
+
+    return formattedSchema;
+  }
+
+  private processProperty(property: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, parentType: string | undefined, mockRefs: string[]): unknown {
+    // Handle reference
+    if ('$ref' in property) {
+      const result = this.resolveRef(property.$ref!, mockRefs);
+      return result ?? undefined;
+    }
+
+    // Handle object type
+    if (property.type === 'object' || !parentType) {
+      return this.getOutputSchema(property, [...mockRefs]);
+    }
+
+    // Handle array type
+    if (property.type === 'array') {
+      return this.processArrayProperty(property, mockRefs);
+    }
+
+    // Handle primitive types
+    return Utils.getPropertyValue(property);
+  }
+
+  private processArrayProperty(property: OpenAPIV3.SchemaObject, mockRefs: string[]): unknown[] {
+    if (!property.items) return [];
+
+    // Handle reference in items
+    if ('$ref' in property.items) {
+      const result = this.resolveRef(property.items.$ref!, mockRefs);
+      return result === undefined ? [] : [result];
+    }
+
+    // Handle tuple-like arrays
+    if (Array.isArray(property.items)) {
+      return property.items.map(item => this.getOutputSchema(item, [...mockRefs]));
+    }
+
+    // Handle object items
+    if (property.items.type === 'object' || !property.items.type) {
+      return [this.getOutputSchema(property.items, [...mockRefs])];
+    }
+
+    return [];
+  }
+
+  private processArraySchema(schema: OpenAPIV3.SchemaObject, mockRefs: string[]): unknown[] | Record<string, unknown> {
+    if (!schema.items) return [];
+
+    // Handle reference in items
+    if ('$ref' in schema.items) {
+      const result = this.resolveRef(schema.items.$ref!, mockRefs);
+      return result ?? {};
+    }
+
+    // Handle tuple-like arrays
+    if (Array.isArray(schema.items)) {
+      return schema.items.map(item => this.getOutputSchema(item, [...mockRefs]));
+    }
+
+    // Handle items with properties (array of objects)
+    if (schema.items.properties) {
+      return [this.processObjectFromProperties(schema.items.properties, schema.type, mockRefs)];
+    }
+
+    return [];
+  }
+
+  private processObjectFromProperties(properties: Record<string, OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject>, parentType: string | undefined, mockRefs: string[]): Record<string, unknown> {
+    const value: Record<string, unknown> = {};
+
+    for (const key of Object.keys(properties)) {
+      const item = properties[key];
+      const processedValue = this.processProperty(item, parentType, mockRefs);
+      if (processedValue !== undefined) {
+        value[key] = processedValue;
       }
     }
-    else { return Utils.getPropertyValue(schema); }
 
-    return {};
+    return value;
   }
 
   getContentTypeResponse(responseSchema: OpenAPIV3.OperationObject, status = this.CONFIG.status.default): string | undefined {
     const responsesObject = responseSchema.responses[status] ?? responseSchema.responses[Object.keys(responseSchema.responses)[0]];
     let responseObject: OpenAPIV3.ResponseObject | OpenAPIV3.ReferenceObject;
     if ('$ref' in responsesObject) {
-      responseObject = this.getObjectFromRef<OpenAPIV3.ResponseObject>([(responsesObject as OpenAPIV3.ReferenceObject).$ref.split('/').slice(1).join('/')]);
+      responseObject = this.getObjectFromRef<OpenAPIV3.ResponseObject>([responsesObject.$ref.split('/').slice(1).join('/')]);
     } else {
-      responseObject = responsesObject as OpenAPIV3.ResponseObject;
+      responseObject = responsesObject;
     }
     const contentTypes = Object.keys(responseObject.content ?? {});
     const configContentType = this.CONFIG.contentType;
@@ -119,5 +188,30 @@ export class MockV3 implements BaseMock {
     if (!Utils.canLoopRef(refPath, refList)) { return undefined; }
     refList.push(refPath.join('/'));
     return this.getOutputSchema(this.getObjectFromRef(refPath), refList);
+  }
+
+  private mergeAllOfSchemas(allOf: (OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject)[], mockRefs: string[]): Record<string, unknown> {
+    const merged: Record<string, unknown> = {};
+
+    for (const schemaOrRef of allOf) {
+      let schema: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject = schemaOrRef;
+
+      // Resolve reference if needed
+      if ('$ref' in schema && schema.$ref) {
+        const refPath = schema.$ref.split('/');
+        refPath.shift(); // Remove the leading '#'
+        schema = this.getObjectFromRef(refPath);
+      }
+
+      // Get the output for this schema
+      const result = this.getOutputSchema(schema, [...mockRefs]);
+
+      // Merge the result into the merged object
+      if (typeof result === 'object' && !Array.isArray(result)) {
+        Object.assign(merged, result);
+      }
+    }
+
+    return merged;
   }
 }

@@ -1,6 +1,6 @@
 export namespace OpenAPIV2 {
   export function isOpenApi2(mock: any): mock is Document {
-    return mock && mock.swagger === "2.0";
+    return mock?.swagger === "2.0";
   }
 
   export type Document = {

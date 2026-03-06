@@ -10,7 +10,7 @@ export class Utils {
    * @param property - OpenAPI Schema Object
    * @returns default value for the property
    */
-  static getPropertyValue = (property: OpenAPI.SchemaObject) => {
+  static readonly getPropertyValue = (property: OpenAPI.SchemaObject) => {
     let defaultValue: unknown = null;
     if (property.type === 'boolean') {
       defaultValue = false;
@@ -34,7 +34,7 @@ export class Utils {
    * @example
    * getObjectFromRef({ a: { b: { c: 1 } } }, ['a', 'b', 'c']) // returns 1
    */
-  static getObjectFromRef = <T>(object: Record<string, unknown>, ref: string[]): T => {
+  static readonly getObjectFromRef = <T>(object: Record<string, unknown>, ref: string[]): T => {
     const key = ref.shift();
     if (!key) return object as T;
     return Utils.getObjectFromRef(object[key] as Record<string, unknown>, ref);
@@ -47,7 +47,7 @@ export class Utils {
    * @param mockRefs - Array of previously seen references
    * @returns true if the reference is valid, false otherwise
    */
-  static canLoopRef = (ref: string[], mockRefs: string[]): boolean => {
+  static readonly canLoopRef = (ref: string[], mockRefs: string[]): boolean => {
     const parsedRef = ref.join('/');
     if (mockRefs.filter(r => r === parsedRef).length > Deps.get(Config).getConfig().maxLoops) {
       console.warn(`Loop detected in ref: ${COLORS.RED}${parsedRef}${COLORS.RESET}`);
@@ -56,11 +56,11 @@ export class Utils {
     return true;
   };
 
-  static isHttpMethod = (method: string): method is OpenAPI.HttpMethods => {
+  static readonly isHttpMethod = (method: string): method is OpenAPI.HttpMethods => {
     return HTTP_METHODS.includes(method as OpenAPI.HttpMethods);
   }
 
-  static isValidStatusCode = (statusCode: string): boolean => {
+  static readonly isValidStatusCode = (statusCode: string): boolean => {
     statusCode = statusCode.trim().toUpperCase();
 
     // Check if the status is a valid HTTP status code
@@ -70,7 +70,7 @@ export class Utils {
     return true;
   }
 
-  static getFirstMatchingStatusCode = (statusCodes: string[], statusToMatch: string): string | undefined => {
+  static readonly getFirstMatchingStatusCode = (statusCodes: string[], statusToMatch: string): string | undefined => {
     statusToMatch = statusToMatch.trim().toUpperCase();
     if (!this.isValidStatusCode(statusToMatch)) {
       return undefined;
@@ -91,7 +91,7 @@ export class Utils {
     });
   }
 
-  static formatUrlPath = (path: string): string => {
+  static readonly formatUrlPath = (path: string): string => {
     return path.replace(/{/g, ':').replace(/}/g, '');
   };
 }

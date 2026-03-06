@@ -1,6 +1,6 @@
 export namespace OpenAPIV3 {
   export function isOpenApi3(mock: any): mock is Document {
-    return mock && mock.openapi?.startsWith("3.");
+    return mock?.openapi?.startsWith("3.");
   }
 
   export type Document = {

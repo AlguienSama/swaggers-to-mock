@@ -58,7 +58,7 @@ export class MockV2 implements BaseMock {
             if (result !== undefined) formattedSchema[key] = [result];
           } else if (Array.isArray(property.items)) {
             formattedSchema[key] = property.items.map(item => this.getOutputSchema(item, [...mockRefs]));
-          } else if ((property.items && property.items.type === 'object') || !property.items?.type) {
+          } else if (property.items?.type === 'object' || !property.items?.type) {
             formattedSchema[key] = [this.getOutputSchema(property.items!, [...mockRefs])];
           }
         } else {
@@ -77,7 +77,7 @@ export class MockV2 implements BaseMock {
       } else if (schema.items?.properties) {
         const value: Record<string, unknown> = {};
         for (const key of Object.keys(schema.items.properties)) {
-          const item = (schema.items as OpenAPIV2.SchemaObject).properties![key];
+          const item = schema.items.properties[key];
           if ('$ref' in item) {
             const result = this.resolveRef(item.$ref!, mockRefs);
             if (result !== undefined) value[key] = result;
