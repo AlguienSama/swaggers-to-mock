@@ -21,6 +21,7 @@
     "preversion": "npm run build"
   },
   "bin": "dist/cli.js",
+  "types": "dist/index.d.ts",
   "dependencies": {
     "express": "^5.1.0",
     "js-yaml": "^4.1.0",

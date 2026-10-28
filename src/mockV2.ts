@@ -19,10 +19,18 @@ export class MockV2 implements BaseMock {
     return url;
   }
 
-  getContentResponse(object: OpenAPIV2.ResponseObject | OpenAPIV2.ReferenceObject) {
+  getContentResponse(object: OpenAPIV2.ResponseObject | OpenAPIV2.ReferenceObject, contentType = Deps.get(Config).getConfig().contentType) {
     if ('$ref' in object) {
       return this.getOutputSchema(object, []);
-    } else if (object.schema) {
+    } else if (object.examples) {
+      const exampleTypes = Object.keys(object.examples);
+      const exampleType = exampleTypes.includes(contentType) ? contentType : exampleTypes[0];
+      if (exampleType && Object.prototype.hasOwnProperty.call(object.examples, exampleType)) {
+        return object.examples[exampleType];
+      }
+    }
+
+    if ('schema' in object && object.schema) {
       return this.getOutputSchema(object.schema, []);
     }
     return undefined;

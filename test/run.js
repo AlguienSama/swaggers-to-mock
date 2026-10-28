@@ -165,6 +165,10 @@ const tests = [
 
     assert.equal(mock.getContentTypeResponse({ responses: { '200': { description: 'ok' } } }), 'application/json');
   }],
+  ['uses Swagger 2 response examples', () => {
+    const mock = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
+    assert.equal(mock.getContentResponse({ examples: { 'application/json': false } }), false);
+  }],
   ['validates OpenAPI documents', () => {
     const document = validateOpenAPIDocument({
       openapi: '3.0.0',
@@ -194,6 +198,10 @@ const tests = [
     );
   }],
   ['serves an OpenAPI response over HTTP', servesOpenApiResponseOverHttp],
+  ['publishes TypeScript declarations for the public API', () => {
+    const fs = require('fs');
+    assert.equal(fs.existsSync(path.join(root, 'dist', 'index.d.ts')), true);
+  }],
 ];
 
 (async () => {
