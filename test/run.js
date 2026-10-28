@@ -26,7 +26,7 @@ function requestHealth(accept, requestPath = '/api/health') {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', chunk => { body += chunk; });
-      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+      response.on('end', () => resolve({ statusCode: response.statusCode, body, headers: response.headers }));
     });
     request.on('error', reject);
     request.end();
@@ -56,14 +56,25 @@ async function servesOpenApiResponseOverHttp() {
     assert.deepEqual(JSON.parse(response.body), { status: 'ok' });
     const acceptedResponse = await requestHealth('application/json');
     assert.equal(acceptedResponse.statusCode, 200);
+    assert.equal(acceptedResponse.headers.vary, 'Accept');
     const rejectedResponse = await requestHealth('text/plain');
     assert.equal(rejectedResponse.statusCode, 406);
+    assert.equal(rejectedResponse.headers.vary, 'Accept');
     const brokenResponse = await requestHealth(undefined, '/api/broken');
     assert.equal(brokenResponse.statusCode, 500);
     assert.deepEqual(JSON.parse(brokenResponse.body), { error: 'Internal Server Error' });
     const externalResponse = await requestHealth(undefined, '/api/external');
     assert.equal(externalResponse.statusCode, 200);
     assert.deepEqual(JSON.parse(externalResponse.body), { status: '' });
+    const missingParameterResponse = await requestHealth(undefined, '/api/required/123');
+    assert.equal(missingParameterResponse.statusCode, 400);
+    assert.deepEqual(JSON.parse(missingParameterResponse.body), {
+      error: 'Bad Request',
+      message: 'Missing required parameter: q',
+    });
+    const validParameterResponse = await requestHealth(undefined, '/api/required/123?q=value');
+    assert.equal(validParameterResponse.statusCode, 200);
+    assert.deepEqual(JSON.parse(validParameterResponse.body), { ok: true });
   } finally {
     server.kill();
     if (server.exitCode === null) {

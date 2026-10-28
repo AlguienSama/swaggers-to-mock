@@ -32,3 +32,27 @@ paths:
             application/json:
               schema:
                 $ref: './common.yaml#/components/schemas/Health'
+  /required/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          type: string
+        - name: q
+          in: query
+          required: true
+          type: string
+      responses:
+        '200':
+          description: Required parameters accepted
+          content:
+            application/json:
+              example:
+                ok: true
+        '400':
+          description: Required parameter missing
+          content:
+            application/json:
+              example:
+                ok: false

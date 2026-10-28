@@ -149,10 +149,14 @@ export class Server {
   }
 
   private getStatusCodeResponse(operation: OpenAPI.OperationObject): string | undefined {
+    return this.getStatusCodeResponseFor(operation, this.CONFIG.status.default);
+  }
+
+  private getStatusCodeResponseFor(operation: OpenAPI.OperationObject, statusPattern: string): string | undefined {
     const statusCodes = Object.keys(operation.responses);
     if (!statusCodes) return undefined;
 
-    return Utils.getFirstMatchingStatusCode(statusCodes, this.CONFIG.status.default)
+    return Utils.getFirstMatchingStatusCode(statusCodes, statusPattern)
       ?? statusCodes.find(statusCode => /^\d{3}$/.test(statusCode))
       ?? (statusCodes.includes('default') ? 'default' : undefined);
   }
@@ -170,6 +174,16 @@ export class Server {
   }
 
   private setRouterOperation(req: Request, res: Response, method: OpenAPI.OperationObject, mock: BaseMock): void {
+    const requestError = this.validateRequest(req, method);
+    if (requestError) {
+      const errorStatus = this.getStatusCodeResponseFor(method, this.CONFIG.status.error);
+      res.status(errorStatus ? this.getHttpStatusCode(errorStatus) : 400).json({
+        error: 'Bad Request',
+        message: requestError,
+      });
+      return;
+    }
+
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
@@ -194,6 +208,9 @@ export class Server {
     // Checking & setting content type
     const availableContentTypes = this.getResponseContentTypes(responseMockContent);
     const acceptedContentType = this.getAcceptedContentType(req.headers.accept, availableContentTypes);
+    if (req.headers.accept && availableContentTypes.length > 0) {
+      res.setHeader('Vary', 'Accept');
+    }
     if (availableContentTypes.length > 0 && req.headers.accept && !acceptedContentType) {
       res.status(406).json({ error: 'Not Acceptable' });
       return;
@@ -219,6 +236,32 @@ export class Server {
       return Object.keys(response.content);
     }
     return [];
+  }
+
+  private validateRequest(req: Request, operation: OpenAPI.OperationObject): string | undefined {
+    if ('parameters' in operation && operation.parameters) {
+      for (const parameter of operation.parameters) {
+        if ('$ref' in parameter || !parameter.required) continue;
+
+        let value: unknown;
+        if (parameter.in === 'path') value = req.params[parameter.name];
+        if (parameter.in === 'query') value = req.query[parameter.name];
+        if (parameter.in === 'header') value = req.headers[parameter.name.toLowerCase()];
+        if (parameter.in === 'cookie') value = req.headers.cookie;
+        if (parameter.in === 'body') value = req.body;
+
+        if (value === undefined || value === null || value === '') {
+          return `Missing required parameter: ${parameter.name}`;
+        }
+      }
+    }
+
+    if ('requestBody' in operation && operation.requestBody && !('$ref' in operation.requestBody)
+      && operation.requestBody.required && (req.body === undefined || req.body === null)) {
+      return 'Missing required request body';
+    }
+
+    return undefined;
   }
 
   private getAcceptedContentType(acceptHeader: string | undefined, availableContentTypes: string[]): string | undefined {
