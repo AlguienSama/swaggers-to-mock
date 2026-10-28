@@ -22,7 +22,19 @@ export class Utils {
       defaultValue = 0;
     }
 
-    return property.default || ('example' in property && property.example) || defaultValue;
+    if (Object.prototype.hasOwnProperty.call(property, 'default')) {
+      return property.default;
+    }
+
+    if ('example' in property) {
+      return property.example;
+    }
+
+    if (property.enum && property.enum.length > 0) {
+      return property.enum[0];
+    }
+
+    return defaultValue;
   };
 
   /**
@@ -49,7 +61,7 @@ export class Utils {
    */
   static readonly canLoopRef = (ref: string[], mockRefs: string[]): boolean => {
     const parsedRef = ref.join('/');
-    if (mockRefs.filter(r => r === parsedRef).length > Deps.get(Config).getConfig().maxLoops) {
+    if (mockRefs.filter(r => r === parsedRef).length >= Deps.get(Config).getConfig().maxLoops) {
       console.warn(`Loop detected in ref: ${COLORS.RED}${parsedRef}${COLORS.RESET}`);
       return false;
     }
@@ -82,12 +94,8 @@ export class Utils {
     return statusCodes.find(statusCode => {
       const trimmedStatusCode = statusCode.trim().toUpperCase();
 
-      indexToMatch.forEach(index => {
-        if (trimmedStatusCode[index] !== statusToMatch[index]) {
-          return false;
-        }
-      });
-      return true;
+      return trimmedStatusCode.length === statusToMatch.length
+        && indexToMatch.every(index => trimmedStatusCode[index] === statusToMatch[index]);
     });
   }
 

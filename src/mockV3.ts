@@ -20,7 +20,10 @@ export class MockV3 implements BaseMock {
     if ('$ref' in object) {
       return this.getOutputSchema(object, []);
     } else if (object.content) {
-      const content = object.content[contentType];
+      const content = object.content[contentType] ?? object.content[Object.keys(object.content)[0]];
+      if (!content) {
+        return undefined;
+      }
 
       // First, check if there are examples defined at the response level
       if (content.examples) {
@@ -34,7 +37,7 @@ export class MockV3 implements BaseMock {
       }
 
       // If no examples, check for a single example
-      if (content.example) {
+      if (Object.prototype.hasOwnProperty.call(content, 'example')) {
         return content.example;
       }
 
@@ -111,47 +114,53 @@ export class MockV3 implements BaseMock {
   }
 
   private processArrayProperty(property: OpenAPIV3.SchemaObject, mockRefs: string[]): unknown[] {
-    if (!property.items) return [];
+    const items = property.items;
+    if (!items) return [];
 
     // Handle reference in items
-    if ('$ref' in property.items) {
-      const result = this.resolveRef(property.items.$ref!, mockRefs);
-      return result === undefined ? [] : [result];
+    if ('$ref' in items) {
+      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
     }
 
     // Handle tuple-like arrays
-    if (Array.isArray(property.items)) {
-      return property.items.map(item => this.getOutputSchema(item, [...mockRefs]));
+    if (Array.isArray(items)) {
+      return items.map(item => this.getOutputSchema(item, [...mockRefs]));
     }
 
     // Handle object items
-    if (property.items.type === 'object' || !property.items.type) {
-      return [this.getOutputSchema(property.items, [...mockRefs])];
+    if (items.type === 'object' || !items.type) {
+      return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
     }
 
-    return [];
+    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
   }
 
   private processArraySchema(schema: OpenAPIV3.SchemaObject, mockRefs: string[]): unknown[] | Record<string, unknown> {
-    if (!schema.items) return [];
+    const items = schema.items;
+    if (!items) return [];
 
     // Handle reference in items
-    if ('$ref' in schema.items) {
-      const result = this.resolveRef(schema.items.$ref!, mockRefs);
-      return result ?? {};
+    if ('$ref' in items) {
+      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
     }
 
     // Handle tuple-like arrays
-    if (Array.isArray(schema.items)) {
-      return schema.items.map(item => this.getOutputSchema(item, [...mockRefs]));
+    if (Array.isArray(items)) {
+      return items.map(item => this.getOutputSchema(item, [...mockRefs]));
     }
 
     // Handle items with properties (array of objects)
-    if (schema.items.properties) {
-      return [this.processObjectFromProperties(schema.items.properties, schema.type, mockRefs)];
+    if (items.properties) {
+      const properties = items.properties;
+      return this.createArrayItems(() => this.processObjectFromProperties(properties, schema.type, [...mockRefs]));
     }
 
-    return [];
+    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+  }
+
+  private createArrayItems<T>(factory: () => T): T[] {
+    const length = Math.max(0, Math.floor(this.CONFIG.arrayItems));
+    return Array.from({ length }, factory);
   }
 
   private processObjectFromProperties(properties: Record<string, OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject>, parentType: string | undefined, mockRefs: string[]): Record<string, unknown> {
@@ -179,7 +188,13 @@ export class MockV3 implements BaseMock {
     const contentTypes = Object.keys(responseObject.content ?? {});
     const configContentType = this.CONFIG.contentType;
 
-    return contentTypes.includes(configContentType) ? configContentType : undefined;
+    if (contentTypes.length === 0) {
+      return undefined;
+    }
+
+    return configContentType !== '*/*' && contentTypes.includes(configContentType)
+      ? configContentType
+      : contentTypes[0];
   }
 
   private resolveRef(ref: string, refList: string[] = []): Record<string, unknown> | unknown[] | undefined {

@@ -13,8 +13,8 @@ export class MockReader {
 
   constructor() {
     this.fullPath = path.join(path.resolve(), this.CONFIG.folder);
-    if (!this.fullPath) {
-      throw new Error(`Folder not found! Default forlder name is ${COLORS.YELLOW}${Config.folder}${COLORS.RESET}`);
+    if (!fs.existsSync(this.fullPath) || !fs.statSync(this.fullPath).isDirectory()) {
+      throw new Error(`Folder not found! Default folder name is ${COLORS.YELLOW}${Config.folder}${COLORS.RESET}`);
     }
   }
 
@@ -25,7 +25,7 @@ export class MockReader {
     }
 
     const mockData: MockReader['mocksList'] = folderFiles
-      .filter(file => file.toLowerCase().endsWith('.yaml'))
+      .filter(file => /\.(yaml|yml|json)$/i.test(file))
       .map(file => {
         const filePath = path.join(this.fullPath, file);
         const fileContent = fs.readFileSync(filePath, 'utf-8');

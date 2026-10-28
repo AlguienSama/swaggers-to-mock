@@ -49,21 +49,43 @@ export class Server {
     Deps.get(MockReader).mocksList.forEach((mockDocument) => {
       const mock: BaseMock = 'swagger' in mockDocument ? new MockV2(mockDocument) : new MockV3(mockDocument);
 
-      let mockUrl = mock.getBaseUrl();
-      let url = this.CONFIG.localUrl;
+      const mockUrl = mock.getBaseUrl();
+      let routePath = this.getRoutePath(mockUrl);
 
-      if (mockUrl?.includes(this.CONFIG.url)) {
-        url = mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl);
-      } else {
-        console.warn(
-          `${COLORS.YELLOW}Warning:${COLORS.RESET} No server base URL matching with ${this.CONFIG.url} in mock ${mock.mock.info.title}. Setting ${this.CONFIG.localUrl} to default URL`,
-        );
-        console.info(`${COLORS.RED}Swagger base URL${COLORS.RESET}: ${mockUrl}`);
+      if (this.CONFIG.url) {
+        if (mockUrl.includes(this.CONFIG.url)) {
+          routePath = this.getRoutePath(mockUrl.replace(this.CONFIG.url, this.CONFIG.localUrl));
+        } else {
+          console.warn(
+            `${COLORS.YELLOW}Warning:${COLORS.RESET} No server base URL matching with ${this.CONFIG.url} in mock ${mock.mock.info.title}. Setting ${this.CONFIG.localUrl} to default URL`,
+          );
+          console.info(`${COLORS.RED}Swagger base URL${COLORS.RESET}: ${mockUrl}`);
+        }
       }
-      console.info(`${COLORS.BLUE}Mock base URL${COLORS.RESET} ${COLORS.RED}v${mock.getVersion()}${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${url.split(this.CONFIG.localUrl)[1]}`)
 
-      this.app.use(url.split(this.CONFIG.localUrl)[1], this.getSwaggerRoutes(mock));
+      if (!routePath) {
+        console.warn(
+          `${COLORS.YELLOW}Warning:${COLORS.RESET} No path found in base URL for mock ${mock.mock.info.title}. Using root URL`,
+        );
+      }
+      routePath ||= '/';
+      console.info(`${COLORS.BLUE}Mock base URL${COLORS.RESET} ${COLORS.RED}v${mock.getVersion()}${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${routePath}`)
+
+      this.app.use(routePath, this.getSwaggerRoutes(mock));
     });
+  }
+
+  private getRoutePath(baseUrl: string): string {
+    if (!baseUrl) {
+      return '';
+    }
+
+    try {
+      return new URL(baseUrl, 'http://swaggers-to-mock.local').pathname.replace(/\/$/, '');
+    } catch {
+      const pathStart = baseUrl.indexOf('/', baseUrl.indexOf('//') + 2);
+      return pathStart >= 0 ? baseUrl.slice(pathStart).replace(/\/$/, '') : '';
+    }
   }
 
   private getSwaggerRoutes(mock: BaseMock): Router {
@@ -108,8 +130,8 @@ export class Server {
     // Getting full response
     const responseMock = method.responses[statusCode];
     let responseMockContent = responseMock;
-    if (!responseMockContent) {
-      const refPath = ((responseMock as OpenAPI.ReferenceObject).$ref ?? (responseMock as OpenAPI.ReferenceObject & { schema: OpenAPI.ReferenceObject }).schema.$ref).split('/');
+    if (responseMockContent && '$ref' in responseMockContent) {
+      const refPath = responseMockContent.$ref.split('/');
       refPath.shift();
       responseMockContent = mock.getObjectFromRef(refPath);
     }

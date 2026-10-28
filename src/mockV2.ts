@@ -53,13 +53,15 @@ export class MockV2 implements BaseMock {
         } else if (property.type === 'object' || !property.type) {
           formattedSchema[key] = this.getOutputSchema(property, [...mockRefs]);
         } else if (property.type === 'array') {
-          if (property.items && '$ref' in property.items) {
-            const result = this.resolveRef(property.items.$ref!, mockRefs);
-            if (result !== undefined) formattedSchema[key] = [result];
-          } else if (Array.isArray(property.items)) {
-            formattedSchema[key] = property.items.map(item => this.getOutputSchema(item, [...mockRefs]));
-          } else if (property.items?.type === 'object' || !property.items?.type) {
-            formattedSchema[key] = [this.getOutputSchema(property.items!, [...mockRefs])];
+          const items = property.items;
+          if (items && '$ref' in items) {
+            formattedSchema[key] = this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+          } else if (Array.isArray(items)) {
+            formattedSchema[key] = items.map(item => this.getOutputSchema(item, [...mockRefs]));
+          } else if (items && (items.type === 'object' || !items.type)) {
+            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+          } else if (items) {
+            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
           }
         } else {
           formattedSchema[key] = Utils.getPropertyValue(property);
@@ -68,16 +70,15 @@ export class MockV2 implements BaseMock {
       return formattedSchema;
     }
     else if (schema.type === 'array') {
-      if (schema.items && '$ref' in schema.items) {
-        const result = this.resolveRef(schema.items.$ref!, mockRefs);
-        if (result !== undefined) return result;
-        return {};
-      } else if (Array.isArray(schema.items)) {
-        return [...schema.items.map(item => this.getOutputSchema(item, [...mockRefs]))];
-      } else if (schema.items?.properties) {
+      const items = schema.items;
+      if (items && '$ref' in items) {
+        return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+      } else if (Array.isArray(items)) {
+        return [...items.map(item => this.getOutputSchema(item, [...mockRefs]))];
+      } else if (items?.properties) {
         const value: Record<string, unknown> = {};
-        for (const key of Object.keys(schema.items.properties)) {
-          const item = schema.items.properties[key];
+        for (const key of Object.keys(items.properties)) {
+          const item = items.properties[key];
           if ('$ref' in item) {
             const result = this.resolveRef(item.$ref!, mockRefs);
             if (result !== undefined) value[key] = result;
@@ -97,7 +98,9 @@ export class MockV2 implements BaseMock {
             value[key] = Utils.getPropertyValue(item);
           }
         }
-        return [value];
+        return this.createArrayItems(() => value);
+      } else if (items) {
+        return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
       }
     }
     else { return Utils.getPropertyValue(schema); }
@@ -105,10 +108,22 @@ export class MockV2 implements BaseMock {
     return {}
   }
 
+  private createArrayItems<T>(factory: () => T): T[] {
+    const length = Math.max(0, Math.floor(Deps.get(Config).getConfig().arrayItems));
+    return Array.from({ length }, factory);
+  }
+
   getContentTypeResponse(responseSchema: OpenAPIV2.OperationObject): string | undefined {
     const configContentType = Deps.get(Config).getConfig().contentType;
 
-    return responseSchema.produces?.includes(configContentType) ? configContentType : undefined;
+    const contentTypes = responseSchema.produces ?? this.mock.produces ?? [];
+    if (contentTypes.length === 0) {
+      return undefined;
+    }
+
+    return configContentType !== '*/*' && contentTypes.includes(configContentType)
+      ? configContentType
+      : contentTypes[0];
   };
 
   private resolveRef(ref: string, refList: string[] = []): Record<string, unknown> | unknown[] | undefined {

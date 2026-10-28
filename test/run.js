@@ -1,0 +1,95 @@
+const assert = require('assert').strict;
+const http = require('http');
+const path = require('path');
+const { spawn } = require('child_process');
+
+const { MockV2 } = require('../dist/mockV2.js');
+const { MockV3 } = require('../dist/mockV3.js');
+const { Utils } = require('../dist/utils/utils.utils.js');
+
+const port = 32123;
+const root = path.resolve(__dirname, '..');
+const fixtureDirectory = path.resolve(__dirname, 'fixtures');
+
+function requestHealth() {
+  return new Promise((resolve, reject) => {
+    const request = http.get(`http://localhost:${port}/api/health`, response => {
+      let body = '';
+      response.setEncoding('utf8');
+      response.on('data', chunk => { body += chunk; });
+      response.on('end', () => resolve({ statusCode: response.statusCode, body }));
+    });
+    request.on('error', reject);
+  });
+}
+
+async function waitForHealth(retries = 30) {
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    try {
+      return await requestHealth();
+    } catch {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
+  throw new Error('Mock server did not start in time');
+}
+
+async function servesOpenApiResponseOverHttp() {
+  const server = spawn(process.execPath, [path.join(root, 'dist', 'cli.js'), `--port=${port}`], {
+    cwd: fixtureDirectory,
+    stdio: 'ignore',
+  });
+
+  try {
+    const response = await waitForHealth();
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(JSON.parse(response.body), { status: 'ok' });
+  } finally {
+    server.kill();
+    if (server.exitCode === null) {
+      await new Promise(resolve => server.once('exit', resolve));
+    }
+  }
+}
+
+const tests = [
+  ['matches wildcard HTTP status codes correctly', () => {
+    assert.equal(Utils.getFirstMatchingStatusCode(['400', '200'], '2XX'), '200');
+    assert.equal(Utils.getFirstMatchingStatusCode(['200', '404'], '4XX'), '404');
+  }],
+  ['uses enum and preserves falsy default/example values', () => {
+    assert.equal(Utils.getPropertyValue({ type: 'string', enum: ['admin', 'user'] }), 'admin');
+    assert.equal(Utils.getPropertyValue({ type: 'boolean', default: false }), false);
+    assert.equal(Utils.getPropertyValue({ type: 'number', default: 0 }), 0);
+    assert.equal(Utils.getPropertyValue({ type: 'string', example: '' }), '');
+  }],
+  ['generates arrays with the configured length', () => {
+    const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
+    const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
+
+    assert.equal(v2.getOutputSchema({ type: 'array', items: { type: 'string' } }, []).length, 2);
+    assert.equal(v3.getOutputSchema({ type: 'array', items: { type: 'integer' } }, []).length, 2);
+  }],
+  ['uses global produces in Swagger 2', () => {
+    const mock = new MockV2({
+      swagger: '2.0',
+      info: { title: 'v2', version: '1' },
+      produces: ['application/json'],
+      paths: {},
+    });
+
+    assert.equal(mock.getContentTypeResponse({ responses: { '200': { description: 'ok' } } }), 'application/json');
+  }],
+  ['serves an OpenAPI response over HTTP', servesOpenApiResponseOverHttp],
+];
+
+(async () => {
+  for (const [name, run] of tests) {
+    await run();
+    console.info(`PASS ${name}`);
+  }
+  console.info(`PASS ${tests.length} tests`);
+})().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});
