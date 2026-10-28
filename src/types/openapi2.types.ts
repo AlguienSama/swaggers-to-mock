@@ -140,6 +140,8 @@ export namespace OpenAPIV2 {
     description?: string;
     default?: any;
     enum?: any[];
+    minItems?: number;
+    maxItems?: number;
   }
 
   export type DefinitionsObject = {

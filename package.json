@@ -33,7 +33,7 @@
     "@types/node": "^22.15.24",
     "@types/rc": "^1.2.4"
   },
-  "exports": "./dist/cli.js",
+  "exports": "./dist/index.js",
   "files": [
     "package.json",
     "dist"

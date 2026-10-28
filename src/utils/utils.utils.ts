@@ -34,6 +34,25 @@ export class Utils {
       return property.enum[0];
     }
 
+    if ('nullable' in property && property.nullable) {
+      return null;
+    }
+
+    if (property.type === 'string') {
+      const formatValues: Record<string, string> = {
+        date: '2020-01-01',
+        'date-time': '2020-01-01T00:00:00.000Z',
+        email: 'user@example.com',
+        uri: 'https://example.com',
+        url: 'https://example.com',
+        uuid: '00000000-0000-4000-8000-000000000000',
+      };
+
+      if (property.format && formatValues[property.format]) {
+        return formatValues[property.format];
+      }
+    }
+
     return defaultValue;
   };
 

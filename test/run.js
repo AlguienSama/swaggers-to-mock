@@ -5,6 +5,8 @@ const { spawn } = require('child_process');
 
 const { MockV2 } = require('../dist/mockV2.js');
 const { MockV3 } = require('../dist/mockV3.js');
+const { Config } = require('../dist/config.js');
+const { validateOpenAPIDocument } = require('../dist/openapi-validator.js');
 const { Utils } = require('../dist/utils/utils.utils.js');
 
 const port = 32123;
@@ -63,12 +65,33 @@ const tests = [
     assert.equal(Utils.getPropertyValue({ type: 'number', default: 0 }), 0);
     assert.equal(Utils.getPropertyValue({ type: 'string', example: '' }), '');
   }],
+  ['generates null for nullable schemas without an explicit value', () => {
+    assert.equal(Utils.getPropertyValue({ type: 'string', nullable: true }), null);
+    assert.equal(Utils.getPropertyValue({ type: 'string', nullable: true, default: 'value' }), 'value');
+  }],
+  ['generates deterministic values for common formats', () => {
+    assert.equal(Utils.getPropertyValue({ type: 'string', format: 'date' }), '2020-01-01');
+    assert.equal(Utils.getPropertyValue({ type: 'string', format: 'uuid' }), '00000000-0000-4000-8000-000000000000');
+    assert.equal(Utils.getPropertyValue({ type: 'string', format: 'email' }), 'user@example.com');
+    assert.equal(Utils.getPropertyValue({ type: 'string', format: 'date', example: '2024-01-01' }), '2024-01-01');
+  }],
+  ['loads valid numeric configuration', () => {
+    const config = new Config().getConfig();
+    assert.equal(Number.isInteger(config.port), true);
+    assert.equal(config.port >= 1 && config.port <= 65535, true);
+    assert.equal(Number.isInteger(config.arrayItems), true);
+    assert.equal(config.arrayItems >= 0, true);
+    assert.equal(Number.isInteger(config.delay), true);
+    assert.equal(config.delay >= 0, true);
+  }],
   ['generates arrays with the configured length', () => {
     const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
     const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
 
     assert.equal(v2.getOutputSchema({ type: 'array', items: { type: 'string' } }, []).length, 2);
     assert.equal(v3.getOutputSchema({ type: 'array', items: { type: 'integer' } }, []).length, 2);
+    assert.equal(v3.getOutputSchema({ type: 'array', minItems: 4, items: { type: 'integer' } }, []).length, 4);
+    assert.equal(v2.getOutputSchema({ type: 'array', maxItems: 1, items: { type: 'string' } }, []).length, 1);
   }],
   ['uses global produces in Swagger 2', () => {
     const mock = new MockV2({
@@ -79,6 +102,22 @@ const tests = [
     });
 
     assert.equal(mock.getContentTypeResponse({ responses: { '200': { description: 'ok' } } }), 'application/json');
+  }],
+  ['validates OpenAPI documents', () => {
+    const document = validateOpenAPIDocument({
+      openapi: '3.0.0',
+      info: { title: 'valid', version: '1' },
+      paths: {},
+    }, 'valid.yaml');
+    assert.equal(document.openapi, '3.0.0');
+    assert.throws(
+      () => validateOpenAPIDocument({ swagger: '1.2' }, 'invalid.yaml'),
+      /invalid\.yaml.*supported versions/,
+    );
+    assert.throws(
+      () => validateOpenAPIDocument({ openapi: '3.0.0', info: {}, paths: {} }, 'missing-info.yaml'),
+      /missing-info\.yaml.*info\.title and info\.version are required/,
+    );
   }],
   ['serves an OpenAPI response over HTTP', servesOpenApiResponseOverHttp],
 ];

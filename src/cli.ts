@@ -11,3 +11,16 @@ Deps.set(MockReader, new MockReader()).init();
 
 server.setMainRoutes();
 server.initServer();
+
+const shutdown = async () => {
+  try {
+    await server.closeServer();
+    process.exit(0);
+  } catch (error) {
+    console.error(error);
+    process.exit(1);
+  }
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

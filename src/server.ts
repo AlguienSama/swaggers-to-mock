@@ -1,4 +1,5 @@
 import express, { json, Request, Response, Router, urlencoded } from 'express';
+import type { Server as HttpServer } from 'node:http';
 import Deps from './utils/deps';
 import { Config } from './config';
 import { COLORS } from './utils/colors.utils';
@@ -13,6 +14,7 @@ export class Server {
   private readonly CONFIG = Deps.get(Config).getConfig();
 
   private readonly app: express.Express;
+  private httpServer?: HttpServer;
 
   constructor() {
     this.app = express();
@@ -22,20 +24,41 @@ export class Server {
     this.setMiddlewares();
   }
 
-  initServer(): void {
-    this.app.listen(this.CONFIG.port, () => {
+  initServer(): HttpServer {
+    this.httpServer = this.app.listen(this.CONFIG.port, () => {
       console.info(
         `${COLORS.BOLD}SERVER RUNNING ON ${COLORS.YELLOW}${this.CONFIG.localUrl}:${this.CONFIG.port}${COLORS.RESET}`,
       );
+    });
+
+    return this.httpServer;
+  }
+
+  closeServer(): Promise<void> {
+    if (!this.httpServer) {
+      return Promise.resolve();
+    }
+
+    return new Promise((resolve, reject) => {
+      this.httpServer!.close(error => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      });
     });
   }
 
   private setMiddlewares(): void {
     this.app.use((req, res, next) => {
-      res.setHeader('Access-Control-Allow-Origin', '*');
+      const corsOrigin = this.CONFIG.corsOrigin;
+      res.setHeader('Access-Control-Allow-Origin', corsOrigin);
       res.setHeader('Access-Control-Allow-Methods', '*');
       res.setHeader('Access-Control-Allow-Headers', '*');
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      if (this.CONFIG.corsCredentials && corsOrigin !== '*') {
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+      }
       res.setHeader('Access-Control-Expose-Headers', '*');
       if (req.method === 'OPTIONS') {
         res.sendStatus(204);

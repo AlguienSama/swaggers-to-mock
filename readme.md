@@ -32,6 +32,12 @@ Below are the default configuration options for the mock server:
 - **contentType**: `'*/*'`
   Default accepted content type.
 
+- **corsOrigin**: `'*'`
+  Value for the `Access-Control-Allow-Origin` response header.
+
+- **corsCredentials**: `false`
+  Enables credentialed CORS responses when `corsOrigin` is not `'*'`.
+
 - **status**:
   - **default**: `'2XX'`
     Default HTTP status code for successful responses.

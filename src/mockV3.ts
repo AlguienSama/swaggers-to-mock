@@ -119,7 +119,7 @@ export class MockV3 implements BaseMock {
 
     // Handle reference in items
     if ('$ref' in items) {
-      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]), property);
     }
 
     // Handle tuple-like arrays
@@ -129,10 +129,10 @@ export class MockV3 implements BaseMock {
 
     // Handle object items
     if (items.type === 'object' || !items.type) {
-      return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+      return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), property);
     }
 
-    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), property);
   }
 
   private processArraySchema(schema: OpenAPIV3.SchemaObject, mockRefs: string[]): unknown[] | Record<string, unknown> {
@@ -141,7 +141,7 @@ export class MockV3 implements BaseMock {
 
     // Handle reference in items
     if ('$ref' in items) {
-      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+      return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]), schema);
     }
 
     // Handle tuple-like arrays
@@ -152,14 +152,20 @@ export class MockV3 implements BaseMock {
     // Handle items with properties (array of objects)
     if (items.properties) {
       const properties = items.properties;
-      return this.createArrayItems(() => this.processObjectFromProperties(properties, schema.type, [...mockRefs]));
+      return this.createArrayItems(() => this.processObjectFromProperties(properties, schema.type, [...mockRefs]), schema);
     }
 
-    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+    return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), schema);
   }
 
-  private createArrayItems<T>(factory: () => T): T[] {
-    const length = Math.max(0, Math.floor(this.CONFIG.arrayItems));
+  private createArrayItems<T>(factory: () => T, schema?: { minItems?: number; maxItems?: number }): T[] {
+    let length = Math.max(0, Math.floor(this.CONFIG.arrayItems));
+    if (schema?.minItems !== undefined) {
+      length = Math.max(length, schema.minItems);
+    }
+    if (schema?.maxItems !== undefined) {
+      length = Math.min(length, schema.maxItems);
+    }
     return Array.from({ length }, factory);
   }
 

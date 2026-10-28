@@ -55,13 +55,13 @@ export class MockV2 implements BaseMock {
         } else if (property.type === 'array') {
           const items = property.items;
           if (items && '$ref' in items) {
-            formattedSchema[key] = this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+            formattedSchema[key] = this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]), property);
           } else if (Array.isArray(items)) {
             formattedSchema[key] = items.map(item => this.getOutputSchema(item, [...mockRefs]));
           } else if (items && (items.type === 'object' || !items.type)) {
-            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), property);
           } else if (items) {
-            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+            formattedSchema[key] = this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), property);
           }
         } else {
           formattedSchema[key] = Utils.getPropertyValue(property);
@@ -72,7 +72,7 @@ export class MockV2 implements BaseMock {
     else if (schema.type === 'array') {
       const items = schema.items;
       if (items && '$ref' in items) {
-        return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]));
+        return this.createArrayItems(() => this.resolveRef(items.$ref!, [...mockRefs]), schema);
       } else if (Array.isArray(items)) {
         return [...items.map(item => this.getOutputSchema(item, [...mockRefs]))];
       } else if (items?.properties) {
@@ -100,7 +100,7 @@ export class MockV2 implements BaseMock {
         }
         return this.createArrayItems(() => value);
       } else if (items) {
-        return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]));
+        return this.createArrayItems(() => this.getOutputSchema(items, [...mockRefs]), schema);
       }
     }
     else { return Utils.getPropertyValue(schema); }
@@ -108,8 +108,14 @@ export class MockV2 implements BaseMock {
     return {}
   }
 
-  private createArrayItems<T>(factory: () => T): T[] {
-    const length = Math.max(0, Math.floor(Deps.get(Config).getConfig().arrayItems));
+  private createArrayItems<T>(factory: () => T, schema?: { minItems?: number; maxItems?: number }): T[] {
+    let length = Math.max(0, Math.floor(Deps.get(Config).getConfig().arrayItems));
+    if (schema?.minItems !== undefined) {
+      length = Math.max(length, schema.minItems);
+    }
+    if (schema?.maxItems !== undefined) {
+      length = Math.min(length, schema.maxItems);
+    }
     return Array.from({ length }, factory);
   }
 

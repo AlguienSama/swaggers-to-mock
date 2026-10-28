@@ -11,5 +11,7 @@ export type ConfigFile = {
     error: string;
   };
   contentType: string;
+  corsOrigin: string;
+  corsCredentials: boolean;
   [key: string]: any;
 };

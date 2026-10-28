@@ -10,12 +10,23 @@ export class Config {
   static readonly arrayItems = 2;
   static readonly delay = 0;
   static readonly contentType = '*/*';
+  static readonly corsOrigin = '*';
+  static readonly corsCredentials = false;
   static readonly status = {
     default: '2XX',
     error: '4XX',
   };
 
   private config?: ConfigFile;
+
+  private parseInteger(value: unknown, name: string, minimum: number, maximum?: number): number {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    if (!Number.isInteger(parsed) || parsed < minimum || (maximum !== undefined && parsed > maximum)) {
+      const range = maximum === undefined ? `at least ${minimum}` : `between ${minimum} and ${maximum}`;
+      throw new Error(`Invalid configuration value for ${name}: expected an integer ${range}`);
+    }
+    return parsed;
+  }
 
   init() {
     this.config = this.loadConfig();
@@ -32,7 +43,7 @@ export class Config {
   }
 
   private loadConfig(): ConfigFile {
-    return rc('swagtomock', {
+    const config = rc('swagtomock', {
       url: Config.url,
       localUrl: Config.localUrl,
       port: Config.port,
@@ -41,10 +52,20 @@ export class Config {
       arrayItems: Config.arrayItems,
       delay: Config.delay,
       contentType: Config.contentType,
+      corsOrigin: Config.corsOrigin,
+      corsCredentials: Config.corsCredentials,
       status: {
         default: Config.status.default,
         error: Config.status.error,
       },
     });
+
+    return {
+      ...config,
+      port: this.parseInteger(config.port, 'port', 1, 65535),
+      maxLoops: this.parseInteger(config.maxLoops, 'maxLoops', 0),
+      arrayItems: this.parseInteger(config.arrayItems, 'arrayItems', 0),
+      delay: this.parseInteger(config.delay, 'delay', 0),
+    };
   }
 }

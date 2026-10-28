@@ -5,6 +5,7 @@ import Deps from './utils/deps';
 import { Config } from './config';
 import { COLORS } from './utils/colors.utils';
 import { OpenAPI } from './types/openapi.types';
+import { validateOpenAPIDocument } from './openapi-validator';
 
 export class MockReader {
   private readonly CONFIG = Deps.get(Config).getConfig();
@@ -28,9 +29,14 @@ export class MockReader {
       .filter(file => /\.(yaml|yml|json)$/i.test(file))
       .map(file => {
         const filePath = path.join(this.fullPath, file);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
-        const yamlData = jsYaml.load(fileContent);
-        return yamlData as MockReader['mocksList'][number];
+        try {
+          const fileContent = fs.readFileSync(filePath, 'utf-8');
+          const yamlData = jsYaml.load(fileContent);
+          return validateOpenAPIDocument(yamlData, file);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new Error(`Unable to load mock file "${file}": ${message}`);
+        }
       });
 
     if (mockData.length === 0) {
