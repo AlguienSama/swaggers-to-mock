@@ -65,10 +65,15 @@ export class Utils {
    * @example
    * getObjectFromRef({ a: { b: { c: 1 } } }, ['a', 'b', 'c']) // returns 1
    */
-  static readonly getObjectFromRef = <T>(object: Record<string, unknown>, ref: string[]): T => {
+  static readonly getObjectFromRef = <T>(object: Record<string, unknown>, ref: string[], currentPath: string[] = []): T => {
     const key = ref.shift();
     if (!key) return object as T;
-    return Utils.getObjectFromRef(object[key] as Record<string, unknown>, ref);
+
+    if (!object || typeof object !== 'object' || !(key in object)) {
+      throw new Error(`Reference path not found: #/${[...currentPath, key].join('/')}`);
+    }
+
+    return Utils.getObjectFromRef(object[key] as Record<string, unknown>, ref, [...currentPath, key]);
   };
 
   /**

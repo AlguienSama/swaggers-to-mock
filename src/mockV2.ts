@@ -43,6 +43,9 @@ export class MockV2 implements BaseMock {
       const formattedSchema: Record<string, unknown> = {};
 
       if (!schema.properties) {
+        if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+          formattedSchema.additionalProperty = this.getOutputSchema(schema.additionalProperties, [...mockRefs]);
+        }
         return formattedSchema;
       }
       for (const key of Object.keys(schema.properties)) {

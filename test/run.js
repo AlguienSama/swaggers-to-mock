@@ -107,6 +107,18 @@ const tests = [
     assert.deepEqual(mock.getOutputSchema({ type: 'object', oneOf: [], properties: { ok: { type: 'boolean' } } }, []), { ok: false });
     assert.deepEqual(mock.getOutputSchema({ type: 'object', anyOf: [], properties: { ok: { type: 'boolean' } } }, []), { ok: false });
   }],
+  ['reports missing references clearly', () => {
+    assert.throws(
+      () => Utils.getObjectFromRef({}, ['components', 'schemas', 'Missing']),
+      /Reference path not found: #\/components/,
+    );
+  }],
+  ['generates representative map values from additionalProperties', () => {
+    const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
+    const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
+    assert.deepEqual(v2.getOutputSchema({ type: 'object', additionalProperties: { type: 'string' } }, []), { additionalProperty: '' });
+    assert.deepEqual(v3.getOutputSchema({ type: 'object', additionalProperties: { type: 'integer' } }, []), { additionalProperty: 0 });
+  }],
   ['generates arrays with the configured length', () => {
     const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
     const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });

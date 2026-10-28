@@ -78,6 +78,12 @@ export class MockV3 implements BaseMock {
     const formattedSchema: Record<string, unknown> = {};
 
     if (!schema.properties) {
+      if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+        return {
+          additionalProperty: this.getOutputSchema(schema.additionalProperties, [...mockRefs]),
+        };
+      }
+
       // Return example if available, otherwise empty object
       return ('example' in schema && schema.example)
         ? schema.example as Record<string, unknown>
