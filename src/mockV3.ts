@@ -79,9 +79,15 @@ export class MockV3 implements BaseMock {
 
     if (!schema.properties) {
       if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-        return {
-          additionalProperty: this.getOutputSchema(schema.additionalProperties, [...mockRefs]),
-        };
+        const minimum = Math.max(1, schema.minProperties ?? 1);
+        const maximum = schema.maxProperties ?? minimum;
+        const count = Math.min(minimum, maximum);
+        const additionalProperties: Record<string, unknown> = {};
+        for (let index = 1; index <= count; index += 1) {
+          const name = index === 1 ? 'additionalProperty' : `additionalProperty${index}`;
+          additionalProperties[name] = this.getOutputSchema(schema.additionalProperties, [...mockRefs]);
+        }
+        return additionalProperties;
       }
 
       // Return example if available, otherwise empty object
@@ -90,12 +96,33 @@ export class MockV3 implements BaseMock {
         : formattedSchema;
     }
 
-    for (const key of Object.keys(schema.properties)) {
-      const property = schema.properties[key];
+    const propertyNames = this.getObjectPropertyNames(schema);
+    for (const key of propertyNames) {
+      const property = schema.properties[key] ?? schema.additionalProperties;
+      if (!property || typeof property === 'boolean') continue;
       formattedSchema[key] = this.processProperty(property, schema.type, mockRefs);
     }
 
     return formattedSchema;
+  }
+
+  private getObjectPropertyNames(schema: OpenAPIV3.SchemaObject): string[] {
+    const propertyNames = Object.keys(schema.properties ?? {});
+    const required = (schema.required ?? []).filter(name => propertyNames.includes(name));
+    const optional = propertyNames.filter(name => !required.includes(name));
+    const maxProperties = schema.maxProperties ?? propertyNames.length;
+    const selected = [...required, ...optional].slice(0, maxProperties);
+
+    if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+      let index = 1;
+      while (selected.length < (schema.minProperties ?? selected.length)) {
+        const name = index === 1 ? 'additionalProperty' : `additionalProperty${index}`;
+        if (!selected.includes(name)) selected.push(name);
+        index += 1;
+      }
+    }
+
+    return selected;
   }
 
   private processProperty(property: OpenAPIV3.SchemaObject | OpenAPIV3.ReferenceObject, parentType: string | undefined, mockRefs: string[]): unknown {

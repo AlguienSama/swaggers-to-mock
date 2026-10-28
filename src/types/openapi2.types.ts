@@ -149,6 +149,9 @@ export namespace OpenAPIV2 {
     maxLength?: number;
     minItems?: number;
     maxItems?: number;
+    minProperties?: number;
+    maxProperties?: number;
+    pattern?: string;
   }
 
   export type DefinitionsObject = {

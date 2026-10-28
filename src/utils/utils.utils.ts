@@ -92,6 +92,31 @@ export class Utils {
         if (property.maxLength !== undefined) {
           normalizedValue = normalizedValue.slice(0, property.maxLength);
         }
+
+        if (property.pattern) {
+          try {
+            const pattern = new RegExp(property.pattern);
+            if (!pattern.test(normalizedValue)) {
+              const candidates = ['A', 'a', '0', 'x', 'foo-0', 'user@example.com'];
+              const matchingCandidate = candidates
+                .map(candidate => {
+                  let value = candidate;
+                  if (property.minLength !== undefined) {
+                    value += 'x'.repeat(Math.max(0, property.minLength - value.length));
+                  }
+                  if (property.maxLength !== undefined) {
+                    value = value.slice(0, property.maxLength);
+                  }
+                  return value;
+                })
+                .find(candidate => pattern.test(candidate));
+              if (matchingCandidate !== undefined) normalizedValue = matchingCandidate;
+            }
+          } catch {
+            // Invalid patterns are reported by document validation when applicable.
+          }
+        }
+
         stringValue = normalizedValue;
       }
 

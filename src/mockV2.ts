@@ -52,12 +52,20 @@ export class MockV2 implements BaseMock {
 
       if (!schema.properties) {
         if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-          formattedSchema.additionalProperty = this.getOutputSchema(schema.additionalProperties, [...mockRefs]);
+          const minimum = Math.max(1, schema.minProperties ?? 1);
+          const maximum = schema.maxProperties ?? minimum;
+          const count = Math.min(minimum, maximum);
+          for (let index = 1; index <= count; index += 1) {
+            const name = index === 1 ? 'additionalProperty' : `additionalProperty${index}`;
+            formattedSchema[name] = this.getOutputSchema(schema.additionalProperties, [...mockRefs]);
+          }
         }
         return formattedSchema;
       }
-      for (const key of Object.keys(schema.properties)) {
-        const property = schema.properties[key];
+      const propertyNames = this.getObjectPropertyNames(schema);
+      for (const key of propertyNames) {
+        const property = schema.properties[key] ?? schema.additionalProperties;
+        if (!property || typeof property === 'boolean') continue;
         if ('$ref' in property) {
           const result = this.resolveRef(property.$ref!, mockRefs);
           if (result !== undefined) formattedSchema[key] = result;
@@ -117,6 +125,25 @@ export class MockV2 implements BaseMock {
     else { return Utils.getPropertyValue(schema); }
 
     return {}
+  }
+
+  private getObjectPropertyNames(schema: OpenAPIV2.SchemaObject): string[] {
+    const propertyNames = Object.keys(schema.properties ?? {});
+    const required = (schema.required ?? []).filter(name => propertyNames.includes(name));
+    const optional = propertyNames.filter(name => !required.includes(name));
+    const maxProperties = schema.maxProperties ?? propertyNames.length;
+    const selected = [...required, ...optional].slice(0, maxProperties);
+
+    if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+      let index = 1;
+      while (selected.length < (schema.minProperties ?? selected.length)) {
+        const name = index === 1 ? 'additionalProperty' : `additionalProperty${index}`;
+        if (!selected.includes(name)) selected.push(name);
+        index += 1;
+      }
+    }
+
+    return selected;
   }
 
   private createArrayItems<T>(factory: () => T, schema?: { minItems?: number; maxItems?: number }): T[] {

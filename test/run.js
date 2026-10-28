@@ -108,6 +108,7 @@ const tests = [
     assert.equal(Utils.getPropertyValue({ type: 'string', minLength: 5 }), 'xxxxx');
     assert.equal(Utils.getPropertyValue({ type: 'string', format: 'email', maxLength: 4 }), 'user');
     assert.equal(Utils.getPropertyValue({ type: 'string', default: 'value', maxLength: 2 }), 'value');
+    assert.equal(Utils.getPropertyValue({ type: 'string', pattern: '^[A-Z]+$' }), 'A');
   }],
   ['respects generated numeric constraints', () => {
     assert.equal(Utils.getPropertyValue({ type: 'integer', minimum: 5 }), 5);
@@ -156,6 +157,20 @@ const tests = [
     const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
     assert.deepEqual(v2.getOutputSchema({ type: 'object', additionalProperties: { type: 'string' } }, []), { additionalProperty: '' });
     assert.deepEqual(v3.getOutputSchema({ type: 'object', additionalProperties: { type: 'integer' } }, []), { additionalProperty: 0 });
+  }],
+  ['respects object property limits', () => {
+    const v3 = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
+    const schema = {
+      type: 'object',
+      required: ['first'],
+      maxProperties: 1,
+      properties: { first: { type: 'string' }, second: { type: 'string' } },
+    };
+    assert.deepEqual(v3.getOutputSchema(schema, []), { first: '' });
+    assert.deepEqual(v3.getOutputSchema({ type: 'object', minProperties: 2, additionalProperties: { type: 'boolean' } }, []), {
+      additionalProperty: false,
+      additionalProperty2: false,
+    });
   }],
   ['generates arrays with the configured length', () => {
     const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });
