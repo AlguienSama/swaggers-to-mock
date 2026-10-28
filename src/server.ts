@@ -228,13 +228,33 @@ export class Server {
 
     const acceptedTypes = acceptHeader
       .split(',')
-      .map(value => value.split(';', 1)[0].trim().toLowerCase())
-      .filter(Boolean);
+      .map((value, index) => {
+        const [mediaType, ...parameters] = value.split(';');
+        const qualityParameter = parameters.find(parameter => parameter.trim().toLowerCase().startsWith('q='));
+        const quality = qualityParameter ? Number(qualityParameter.trim().slice(2)) : 1;
+        return {
+          mediaType: mediaType.trim().toLowerCase(),
+          quality: Number.isFinite(quality) ? quality : 0,
+          index,
+        };
+      })
+      .filter(acceptedType => acceptedType.mediaType && acceptedType.quality > 0)
+      .sort((left, right) => right.quality - left.quality || left.index - right.index);
 
-    return availableContentTypes.find(contentType => acceptedTypes.some(acceptedType => {
-      if (acceptedType === '*/*') return true;
-      if (acceptedType.endsWith('/*')) return contentType.toLowerCase().startsWith(`${acceptedType.slice(0, -1)}`);
-      return acceptedType === contentType.toLowerCase();
-    }));
+    for (const acceptedType of acceptedTypes) {
+      const matchingContentType = availableContentTypes.find(contentType => {
+        if (acceptedType.mediaType === '*/*') return true;
+        if (acceptedType.mediaType.endsWith('/*')) {
+          return contentType.toLowerCase().startsWith(acceptedType.mediaType.slice(0, -1));
+        }
+        return acceptedType.mediaType === contentType.toLowerCase();
+      });
+
+      if (matchingContentType) {
+        return matchingContentType;
+      }
+    }
+
+    return undefined;
   }
 }

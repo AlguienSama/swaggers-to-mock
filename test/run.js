@@ -105,6 +105,14 @@ const tests = [
     assert.equal(server.getHttpStatusCode('2XX'), 200);
     assert.equal(server.getHttpStatusCode('default'), 200);
   }],
+  ['honors Accept quality values', () => {
+    const server = new Server();
+    assert.equal(
+      server.getAcceptedContentType('text/plain;q=0.9, application/json;q=1', ['text/plain', 'application/json']),
+      'application/json',
+    );
+    assert.equal(server.getAcceptedContentType('application/json;q=0', ['application/json']), undefined);
+  }],
   ['handles empty schema compositions safely', () => {
     const mock = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
     assert.deepEqual(mock.getOutputSchema({ type: 'object', oneOf: [], properties: { ok: { type: 'boolean' } } }, []), { ok: false });
