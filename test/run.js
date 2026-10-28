@@ -14,12 +14,12 @@ const port = 32123;
 const root = path.resolve(__dirname, '..');
 const fixtureDirectory = path.resolve(__dirname, 'fixtures');
 
-function requestHealth(accept) {
+function requestHealth(accept, requestPath = '/api/health') {
   return new Promise((resolve, reject) => {
     const request = http.request({
       hostname: 'localhost',
       port,
-      path: '/api/health',
+      path: requestPath,
       method: 'GET',
       headers: accept ? { Accept: accept } : {},
     }, response => {
@@ -58,6 +58,9 @@ async function servesOpenApiResponseOverHttp() {
     assert.equal(acceptedResponse.statusCode, 200);
     const rejectedResponse = await requestHealth('text/plain');
     assert.equal(rejectedResponse.statusCode, 406);
+    const brokenResponse = await requestHealth(undefined, '/api/broken');
+    assert.equal(brokenResponse.statusCode, 500);
+    assert.deepEqual(JSON.parse(brokenResponse.body), { error: 'Internal Server Error' });
   } finally {
     server.kill();
     if (server.exitCode === null) {

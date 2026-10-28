@@ -14,3 +14,12 @@ paths:
             application/json:
               example:
                 status: ok
+  /broken:
+    get:
+      responses:
+        '200':
+          description: Broken schema reference
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Missing'

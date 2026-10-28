@@ -1,4 +1,4 @@
-import express, { json, Request, Response, Router, urlencoded } from 'express';
+import express, { json, NextFunction, Request, Response, Router, urlencoded } from 'express';
 import type { Server as HttpServer } from 'node:http';
 import Deps from './utils/deps';
 import { Config } from './config';
@@ -95,6 +95,20 @@ export class Server {
       console.info(`${COLORS.BLUE}Mock base URL${COLORS.RESET} ${COLORS.RED}v${mock.getVersion()}${COLORS.RESET} ${this.CONFIG.localUrl}:${this.CONFIG.port}${routePath}`)
 
       this.app.use(routePath, this.getSwaggerRoutes(mock));
+    });
+
+    this.setErrorHandler();
+  }
+
+  private setErrorHandler(): void {
+    this.app.use((error: unknown, _req: Request, res: Response, next: NextFunction) => {
+      if (res.headersSent) {
+        next(error);
+        return;
+      }
+
+      console.error(error);
+      res.status(500).json({ error: 'Internal Server Error' });
     });
   }
 
