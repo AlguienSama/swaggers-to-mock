@@ -38,6 +38,38 @@ export class Utils {
       return null;
     }
 
+    if (property.type === 'number' || property.type === 'integer') {
+      let numericValue = defaultValue as number;
+      const minimum = property.minimum;
+      const maximum = property.maximum;
+      const exclusiveStep = (value: number) => Math.max(1, Math.abs(value)) * Number.EPSILON * 2;
+
+      if (minimum !== undefined) {
+        const candidate = property.exclusiveMinimum
+          ? property.type === 'integer' ? minimum + 1 : minimum + exclusiveStep(minimum)
+          : minimum;
+        numericValue = Math.max(numericValue, candidate);
+      }
+      if (maximum !== undefined) {
+        const candidate = property.exclusiveMaximum
+          ? property.type === 'integer' ? maximum - 1 : maximum - exclusiveStep(maximum)
+          : maximum;
+        numericValue = Math.min(numericValue, candidate);
+      }
+
+      if (property.multipleOf !== undefined && property.multipleOf > 0) {
+        const multipleOf = property.multipleOf;
+        const nextMultiple = Math.ceil(numericValue / multipleOf) * multipleOf;
+        numericValue = nextMultiple;
+
+        if (maximum !== undefined && numericValue > maximum) {
+          numericValue = Math.floor(maximum / multipleOf) * multipleOf;
+        }
+      }
+
+      return numericValue;
+    }
+
     if (property.type === 'string') {
       const formatValues: Record<string, string> = {
         date: '2020-01-01',
@@ -48,9 +80,22 @@ export class Utils {
         uuid: '00000000-0000-4000-8000-000000000000',
       };
 
-      if (property.format && formatValues[property.format]) {
-        return formatValues[property.format];
+      let stringValue = property.format && formatValues[property.format]
+        ? formatValues[property.format]
+        : defaultValue;
+
+      if (typeof stringValue === 'string') {
+        let normalizedValue = stringValue;
+        if (property.minLength !== undefined) {
+          normalizedValue += 'x'.repeat(Math.max(0, property.minLength - normalizedValue.length));
+        }
+        if (property.maxLength !== undefined) {
+          normalizedValue = normalizedValue.slice(0, property.maxLength);
+        }
+        stringValue = normalizedValue;
       }
+
+      return stringValue;
     }
 
     return defaultValue;

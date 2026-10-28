@@ -61,6 +61,9 @@ async function servesOpenApiResponseOverHttp() {
     const brokenResponse = await requestHealth(undefined, '/api/broken');
     assert.equal(brokenResponse.statusCode, 500);
     assert.deepEqual(JSON.parse(brokenResponse.body), { error: 'Internal Server Error' });
+    const externalResponse = await requestHealth(undefined, '/api/external');
+    assert.equal(externalResponse.statusCode, 200);
+    assert.deepEqual(JSON.parse(externalResponse.body), { status: '' });
   } finally {
     server.kill();
     if (server.exitCode === null) {
@@ -90,6 +93,18 @@ const tests = [
     assert.equal(Utils.getPropertyValue({ type: 'string', format: 'email' }), 'user@example.com');
     assert.equal(Utils.getPropertyValue({ type: 'string', format: 'date', example: '2024-01-01' }), '2024-01-01');
   }],
+  ['respects generated string length constraints', () => {
+    assert.equal(Utils.getPropertyValue({ type: 'string', minLength: 5 }), 'xxxxx');
+    assert.equal(Utils.getPropertyValue({ type: 'string', format: 'email', maxLength: 4 }), 'user');
+    assert.equal(Utils.getPropertyValue({ type: 'string', default: 'value', maxLength: 2 }), 'value');
+  }],
+  ['respects generated numeric constraints', () => {
+    assert.equal(Utils.getPropertyValue({ type: 'integer', minimum: 5 }), 5);
+    assert.equal(Utils.getPropertyValue({ type: 'integer', maximum: -2 }), -2);
+    assert.equal(Utils.getPropertyValue({ type: 'integer', minimum: 5, exclusiveMinimum: true }), 6);
+    assert.equal(Utils.getPropertyValue({ type: 'number', maximum: -2, exclusiveMaximum: true }) < -2, true);
+    assert.equal(Utils.getPropertyValue({ type: 'integer', minimum: 3, multipleOf: 2 }), 4);
+  }],
   ['loads valid numeric configuration', () => {
     const config = new Config().getConfig();
     assert.equal(Number.isInteger(config.port), true);
@@ -98,6 +113,7 @@ const tests = [
     assert.equal(config.arrayItems >= 0, true);
     assert.equal(Number.isInteger(config.delay), true);
     assert.equal(config.delay >= 0, true);
+    assert.equal(typeof config.corsCredentials, 'boolean');
   }],
   ['normalizes default and ranged HTTP status codes', () => {
     const server = new Server();

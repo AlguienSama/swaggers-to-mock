@@ -1,0 +1,7 @@
+components:
+  schemas:
+    Health:
+      type: object
+      properties:
+        status:
+          type: string

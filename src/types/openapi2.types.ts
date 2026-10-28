@@ -140,6 +140,13 @@ export namespace OpenAPIV2 {
     description?: string;
     default?: any;
     enum?: any[];
+    minimum?: number;
+    maximum?: number;
+    exclusiveMinimum?: boolean;
+    exclusiveMaximum?: boolean;
+    multipleOf?: number;
+    minLength?: number;
+    maxLength?: number;
     minItems?: number;
     maxItems?: number;
   }

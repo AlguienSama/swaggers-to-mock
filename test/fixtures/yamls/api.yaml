@@ -23,3 +23,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Missing'
+  /external:
+    get:
+      responses:
+        '200':
+          description: External schema
+          content:
+            application/json:
+              schema:
+                $ref: './refs/common.yaml#/components/schemas/Health'

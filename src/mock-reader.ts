@@ -6,6 +6,7 @@ import { Config } from './config';
 import { COLORS } from './utils/colors.utils';
 import { OpenAPI } from './types/openapi.types';
 import { validateOpenAPIDocument } from './openapi-validator';
+import { resolveExternalReferences } from './utils/external-refs.utils';
 
 export class MockReader {
   private readonly CONFIG = Deps.get(Config).getConfig();
@@ -32,7 +33,8 @@ export class MockReader {
         try {
           const fileContent = fs.readFileSync(filePath, 'utf-8');
           const yamlData = jsYaml.load(fileContent);
-          return validateOpenAPIDocument(yamlData, file);
+          const resolvedData = resolveExternalReferences(yamlData, filePath);
+          return validateOpenAPIDocument(resolvedData, file);
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           throw new Error(`Unable to load mock file "${file}": ${message}`);

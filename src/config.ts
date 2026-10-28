@@ -28,6 +28,19 @@ export class Config {
     return parsed;
   }
 
+  private parseBoolean(value: unknown, name: string): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      if (value.toLowerCase() === 'true') return true;
+      if (value.toLowerCase() === 'false') return false;
+    }
+
+    throw new Error(`Invalid configuration value for ${name}: expected true or false`);
+  }
+
   init() {
     this.config = this.loadConfig();
   }
@@ -66,6 +79,7 @@ export class Config {
       maxLoops: this.parseInteger(config.maxLoops, 'maxLoops', 0),
       arrayItems: this.parseInteger(config.arrayItems, 'arrayItems', 0),
       delay: this.parseInteger(config.delay, 'delay', 0),
+      corsCredentials: this.parseBoolean(config.corsCredentials, 'corsCredentials'),
     };
   }
 }
