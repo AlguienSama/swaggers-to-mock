@@ -138,17 +138,31 @@ export class Server {
     const statusCodes = Object.keys(operation.responses);
     if (!statusCodes) return undefined;
 
-    return Utils.getFirstMatchingStatusCode(statusCodes, this.CONFIG.status.default);
+    return Utils.getFirstMatchingStatusCode(statusCodes, this.CONFIG.status.default)
+      ?? statusCodes.find(statusCode => /^\d{3}$/.test(statusCode))
+      ?? (statusCodes.includes('default') ? 'default' : undefined);
   }
 
-  private setRouterOperation(_: Request, res: Response, method: OpenAPI.OperationObject, mock: BaseMock): void {
+  private getHttpStatusCode(statusCode: string): number {
+    if (/^[1-5]\d{2}$/.test(statusCode)) {
+      return Number(statusCode);
+    }
+
+    if (/^[1-5]XX$/i.test(statusCode)) {
+      return Number(statusCode[0]) * 100;
+    }
+
+    return 200;
+  }
+
+  private setRouterOperation(req: Request, res: Response, method: OpenAPI.OperationObject, mock: BaseMock): void {
     // Checking & setting status code
     let statusCode = this.getStatusCodeResponse(method);
     if (!statusCode) {
       statusCode = Object.keys(method.responses)[0] ?? this.CONFIG.status.default;
       console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid status code found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${statusCode}${COLORS.RESET} as first status founded.`);
     }
-    res.status(Number.parseInt(statusCode, 10));
+    res.status(this.getHttpStatusCode(statusCode));
 
     // Getting full response
     const responseMock = method.responses[statusCode];
@@ -164,18 +178,49 @@ export class Server {
     }
 
     // Checking & setting content type
-    let contentType = mock.getContentTypeResponse(method, statusCode);
+    const availableContentTypes = this.getResponseContentTypes(responseMockContent);
+    const acceptedContentType = this.getAcceptedContentType(req.headers.accept, availableContentTypes);
+    if (availableContentTypes.length > 0 && req.headers.accept && !acceptedContentType) {
+      res.status(406).json({ error: 'Not Acceptable' });
+      return;
+    }
+
+    let contentType = acceptedContentType ?? mock.getContentTypeResponse(method, statusCode);
     if (!contentType) {
-      contentType = this.CONFIG.contentType ?? Object.keys(responseMockContent)[0];
+      contentType = availableContentTypes[0] ?? this.CONFIG.contentType;
       console.warn(`${COLORS.YELLOW}Warning:${COLORS.RESET} No valid Content-Type found for operation ${COLORS.YELLOW}${method.operationId ?? method.description ?? 'unknown'}${COLORS.RESET}. Returning ${COLORS.YELLOW}${contentType}${COLORS.RESET} as first Content-Type founded.`);
     }
     res.setHeader('Content-Type', contentType);
 
     // Checking & setting response body
-    let responseBody = mock.getContentResponse(responseMockContent);;
+    const responseBody = mock.getContentResponse(responseMockContent, contentType);
 
     setTimeout(() => {
       res.send(responseBody);
     }, this.CONFIG.delay);
+  }
+
+  private getResponseContentTypes(response: OpenAPI.ResponseObject | OpenAPI.ReferenceObject): string[] {
+    if ('content' in response && response.content) {
+      return Object.keys(response.content);
+    }
+    return [];
+  }
+
+  private getAcceptedContentType(acceptHeader: string | undefined, availableContentTypes: string[]): string | undefined {
+    if (!acceptHeader || availableContentTypes.length === 0) {
+      return undefined;
+    }
+
+    const acceptedTypes = acceptHeader
+      .split(',')
+      .map(value => value.split(';', 1)[0].trim().toLowerCase())
+      .filter(Boolean);
+
+    return availableContentTypes.find(contentType => acceptedTypes.some(acceptedType => {
+      if (acceptedType === '*/*') return true;
+      if (acceptedType.endsWith('/*')) return contentType.toLowerCase().startsWith(`${acceptedType.slice(0, -1)}`);
+      return acceptedType === contentType.toLowerCase();
+    }));
   }
 }

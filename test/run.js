@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const { MockV2 } = require('../dist/mockV2.js');
 const { MockV3 } = require('../dist/mockV3.js');
 const { Config } = require('../dist/config.js');
+const { Server } = require('../dist/server.js');
 const { validateOpenAPIDocument } = require('../dist/openapi-validator.js');
 const { Utils } = require('../dist/utils/utils.utils.js');
 
@@ -13,15 +14,22 @@ const port = 32123;
 const root = path.resolve(__dirname, '..');
 const fixtureDirectory = path.resolve(__dirname, 'fixtures');
 
-function requestHealth() {
+function requestHealth(accept) {
   return new Promise((resolve, reject) => {
-    const request = http.get(`http://localhost:${port}/api/health`, response => {
+    const request = http.request({
+      hostname: 'localhost',
+      port,
+      path: '/api/health',
+      method: 'GET',
+      headers: accept ? { Accept: accept } : {},
+    }, response => {
       let body = '';
       response.setEncoding('utf8');
       response.on('data', chunk => { body += chunk; });
       response.on('end', () => resolve({ statusCode: response.statusCode, body }));
     });
     request.on('error', reject);
+    request.end();
   });
 }
 
@@ -46,6 +54,10 @@ async function servesOpenApiResponseOverHttp() {
     const response = await waitForHealth();
     assert.equal(response.statusCode, 200);
     assert.deepEqual(JSON.parse(response.body), { status: 'ok' });
+    const acceptedResponse = await requestHealth('application/json');
+    assert.equal(acceptedResponse.statusCode, 200);
+    const rejectedResponse = await requestHealth('text/plain');
+    assert.equal(rejectedResponse.statusCode, 406);
   } finally {
     server.kill();
     if (server.exitCode === null) {
@@ -83,6 +95,17 @@ const tests = [
     assert.equal(config.arrayItems >= 0, true);
     assert.equal(Number.isInteger(config.delay), true);
     assert.equal(config.delay >= 0, true);
+  }],
+  ['normalizes default and ranged HTTP status codes', () => {
+    const server = new Server();
+    assert.equal(server.getHttpStatusCode('200'), 200);
+    assert.equal(server.getHttpStatusCode('2XX'), 200);
+    assert.equal(server.getHttpStatusCode('default'), 200);
+  }],
+  ['handles empty schema compositions safely', () => {
+    const mock = new MockV3({ openapi: '3.0.0', info: { title: 'v3', version: '1' }, paths: {} });
+    assert.deepEqual(mock.getOutputSchema({ type: 'object', oneOf: [], properties: { ok: { type: 'boolean' } } }, []), { ok: false });
+    assert.deepEqual(mock.getOutputSchema({ type: 'object', anyOf: [], properties: { ok: { type: 'boolean' } } }, []), { ok: false });
   }],
   ['generates arrays with the configured length', () => {
     const v2 = new MockV2({ swagger: '2.0', info: { title: 'v2', version: '1' }, paths: {} });

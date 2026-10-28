@@ -58,9 +58,9 @@ export class MockV3 implements BaseMock {
     }
 
     // Handle schema composition keywords
-    if (schema.allOf) return this.mergeAllOfSchemas(schema.allOf, mockRefs);
-    if (schema.oneOf) return this.getOutputSchema(schema.oneOf[0], mockRefs);
-    if (schema.anyOf) return this.getOutputSchema(schema.anyOf[0], mockRefs);
+    if (schema.allOf?.length) return this.mergeAllOfSchemas(schema.allOf, mockRefs);
+    if (schema.oneOf?.length) return this.getOutputSchema(schema.oneOf[0], mockRefs);
+    if (schema.anyOf?.length) return this.getOutputSchema(schema.anyOf[0], mockRefs);
 
     // Handle different schema types
     if (schema.type === 'object' || !schema.type) {
