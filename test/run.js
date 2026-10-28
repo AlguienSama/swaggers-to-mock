@@ -164,6 +164,18 @@ const tests = [
       () => validateOpenAPIDocument({ openapi: '3.0.0', info: {}, paths: {} }, 'missing-info.yaml'),
       /missing-info\.yaml.*info\.title and info\.version are required/,
     );
+    assert.throws(
+      () => validateOpenAPIDocument({ openapi: '3.0.0', info: { title: 'invalid', version: '1' }, paths: { '/health': { get: {} } } }, 'missing-responses.yaml'),
+      /missing-responses\.yaml.*GET \/health must define responses/,
+    );
+    assert.throws(
+      () => validateOpenAPIDocument({ openapi: '3.0.0', info: { title: 'invalid', version: '1' }, paths: { '/health': { get: { responses: { invalid: { description: 'bad' } } } } } }, 'invalid-status.yaml'),
+      /invalid-status\.yaml.*invalid response status "invalid"/,
+    );
+    assert.throws(
+      () => validateOpenAPIDocument({ openapi: '3.0.0', info: { title: 'invalid', version: '1' }, paths: { '/health': { get: { responses: { '200': {} } } } } }, 'missing-description.yaml'),
+      /missing-description\.yaml.*response "200".*must define description/,
+    );
   }],
   ['serves an OpenAPI response over HTTP', servesOpenApiResponseOverHttp],
 ];
