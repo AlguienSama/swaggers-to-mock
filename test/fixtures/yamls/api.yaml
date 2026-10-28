@@ -31,4 +31,4 @@ paths:
           content:
             application/json:
               schema:
-                $ref: './refs/common.yaml#/components/schemas/Health'
+                $ref: './common.yaml#/components/schemas/Health'

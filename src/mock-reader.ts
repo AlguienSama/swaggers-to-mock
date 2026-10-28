@@ -20,13 +20,20 @@ export class MockReader {
     }
   }
 
+  private isOpenAPIRoot(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object'
+      && value !== null
+      && !Array.isArray(value)
+      && ('openapi' in value || 'swagger' in value);
+  }
+
   init(): void {
     const folderFiles = fs.readdirSync(this.fullPath);
     if (folderFiles.length === 0) {
       throw new Error(`Folder "${this.CONFIG.folder}" is empty!`);
     }
 
-    const mockData: MockReader['mocksList'] = folderFiles
+    const mockData = folderFiles
       .filter(file => /\.(yaml|yml|json)$/i.test(file))
       .map(file => {
         const filePath = path.join(this.fullPath, file);
@@ -34,12 +41,15 @@ export class MockReader {
           const fileContent = fs.readFileSync(filePath, 'utf-8');
           const yamlData = jsYaml.load(fileContent);
           const resolvedData = resolveExternalReferences(yamlData, filePath);
-          return validateOpenAPIDocument(resolvedData, file);
+          return this.isOpenAPIRoot(resolvedData)
+            ? validateOpenAPIDocument(resolvedData, file)
+            : undefined;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           throw new Error(`Unable to load mock file "${file}": ${message}`);
         }
-      });
+      })
+      .filter((document): document is OpenAPI.Document => document !== undefined);
 
     if (mockData.length === 0) {
       throw new Error(
